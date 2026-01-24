@@ -1,19 +1,20 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Plus_Jakarta_Sans } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "@/components/ui/sonner"
 
-const inter = Inter({
-  variable: "--font-inter",
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: "--font-plus-jakarta",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 })
 
 export const metadata: Metadata = {
   title: {
-    default: "LCNTSHIPS - Book Creative Studios",
-    template: "%s | LCNTSHIPS",
+    default: "lcntships | Creative Studio Rental Platform",
+    template: "%s | lcntships",
   },
-  description: "Find and book creative studios for photography, video, podcast, music, and more.",
+  description: "The premium platform for creators to find and book unique studio spaces worldwide.",
   keywords: ["studio rental", "creative space", "photography studio", "video studio", "podcast studio", "Netherlands"],
 }
 
@@ -24,7 +25,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="nl" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className={`${plusJakarta.variable} font-sans antialiased selection:bg-sky-200/30`}>
         {children}
         <Toaster position="bottom-right" />
       </body>

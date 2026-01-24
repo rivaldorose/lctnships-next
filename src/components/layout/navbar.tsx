@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Menu, Search, Bell, MessageSquare, Plus } from "lucide-react"
+import { Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useUser } from "@/hooks/use-user"
 
@@ -22,70 +22,59 @@ export function Navbar() {
   const isHost = profile?.user_type === 'host' || profile?.user_type === 'both'
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
+    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100">
+      <div className="max-w-[1440px] mx-auto px-8 h-20 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <span className="text-xl font-bold">LCNTSHIPS</span>
+        <Link href="/" className="flex items-center gap-2">
+          <div className="text-primary">
+            <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M24 4L44 24L24 44L4 24L24 4Z" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M24 14V34" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <span className="text-xl font-extrabold tracking-tight">lcntships</span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-6">
+        <nav className="hidden lg:flex items-center gap-8">
           <Link
             href="/studios"
-            className={`text-sm font-medium transition-colors hover:text-primary ${
-              pathname === '/studios' ? 'text-primary' : 'text-muted-foreground'
-            }`}
+            className="text-sm font-semibold text-gray-600 hover:text-black transition-colors"
           >
-            Ontdek Studios
+            Find a Studio
           </Link>
-          {!user && (
-            <Link
-              href="/become-a-host"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                pathname === '/become-a-host' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Word Host
-            </Link>
-          )}
+          <Link
+            href="/inspiration"
+            className="text-sm font-semibold text-gray-600 hover:text-black transition-colors"
+          >
+            Inspiration
+          </Link>
+          <Link
+            href="/pricing"
+            className="text-sm font-semibold text-gray-600 hover:text-black transition-colors"
+          >
+            Pricing
+          </Link>
         </nav>
 
         {/* Right side */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-6">
           {user ? (
             <>
               {/* Host CTA */}
               {isHost && (
                 <Link href="/host/studios/new" className="hidden md:block">
-                  <Button variant="outline" size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nieuwe Studio
-                  </Button>
+                  <span className="text-sm font-bold text-gray-900">List your studio</span>
                 </Link>
               )}
-
-              {/* Notifications */}
-              <Link href="/notifications">
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
-                </Button>
-              </Link>
-
-              {/* Messages */}
-              <Link href="/messages">
-                <Button variant="ghost" size="icon">
-                  <MessageSquare className="h-5 w-5" />
-                </Button>
-              </Link>
 
               {/* Profile dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
                       <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'User'} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-primary text-white">
                         {profile?.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
@@ -105,13 +94,16 @@ export function Navbar() {
                     <Link href="/dashboard">Dashboard</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/bookings">Mijn Boekingen</Link>
+                    <Link href="/bookings">My Bookings</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/projects">Mijn Projecten</Link>
+                    <Link href="/projects">My Projects</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/favorites">Favorieten</Link>
+                    <Link href="/favorites">Favorites</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/messages">Messages</Link>
                   </DropdownMenuItem>
                   {isHost && (
                     <>
@@ -120,55 +112,57 @@ export function Navbar() {
                         <Link href="/host/dashboard">Host Dashboard</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href="/host/studios">Mijn Studios</Link>
+                        <Link href="/host/studios">My Studios</Link>
                       </DropdownMenuItem>
                     </>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/profile">Profiel</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings">Instellingen</Link>
+                    <Link href="/profile">Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut()}>
-                    Uitloggen
+                    Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
           ) : (
             <>
-              <Link href="/login">
-                <Button variant="ghost">Inloggen</Button>
+              <Link href="/host/onboarding" className="text-sm font-bold text-gray-900 hidden md:block">
+                List your studio
               </Link>
-              <Link href="/signup">
-                <Button>Aanmelden</Button>
+              <Link href="/login">
+                <Button className="bg-primary text-white text-sm font-bold px-8 py-3 rounded-full hover:bg-gray-800 transition-all">
+                  Login
+                </Button>
               </Link>
             </>
           )}
 
           {/* Mobile menu */}
           <Sheet>
-            <SheetTrigger asChild className="md:hidden">
+            <SheetTrigger asChild className="lg:hidden">
               <Button variant="ghost" size="icon">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
             <SheetContent side="right">
               <nav className="flex flex-col space-y-4 mt-8">
-                <Link href="/studios" className="text-lg font-medium">
-                  Ontdek Studios
+                <Link href="/studios" className="text-lg font-semibold">
+                  Find a Studio
+                </Link>
+                <Link href="/inspiration" className="text-lg font-semibold">
+                  Inspiration
+                </Link>
+                <Link href="/pricing" className="text-lg font-semibold">
+                  Pricing
                 </Link>
                 {!user && (
-                  <Link href="/become-a-host" className="text-lg font-medium">
-                    Word Host
+                  <Link href="/host/onboarding" className="text-lg font-semibold">
+                    List your studio
                   </Link>
                 )}
-                <Link href="/help" className="text-lg font-medium">
-                  Help
-                </Link>
               </nav>
             </SheetContent>
           </Sheet>

@@ -1,56 +1,35 @@
-import { Shield, Clock, CreditCard, MessageSquare } from "lucide-react"
-
 const features = [
   {
-    icon: Shield,
-    title: "Geverifieerde studio's",
-    description:
-      "Elke ruimte wordt gecontroleerd op kwaliteit en veiligheid voordat deze op het platform komt.",
+    icon: "verified",
+    title: "Verified Studios",
+    description: "Every space is personally vetted by our team to ensure it meets professional standards.",
   },
   {
-    icon: Clock,
-    title: "Instant boeken",
-    description:
-      "Boek direct beschikbare studio's zonder te wachten op bevestiging van de host.",
+    icon: "bolt",
+    title: "Instant Booking",
+    description: "Seamless scheduling and secure payments so you can focus on your creative vision.",
   },
   {
-    icon: CreditCard,
-    title: "Veilig betalen",
-    description:
-      "Betaal veilig via ons platform. Je geld is beschermd tot na je boeking.",
-  },
-  {
-    icon: MessageSquare,
-    title: "Direct contact",
-    description:
-      "Chat direct met hosts om vragen te stellen of speciale wensen te bespreken.",
+    icon: "camera",
+    title: "Professional Gear",
+    description: "Access high-end lighting, backdrops, and technical equipment in every location.",
   },
 ]
 
 export function WhyLcntships() {
   return (
-    <section className="py-16 bg-muted/30">
-      <div className="container">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold">Waarom LCNTSHIPS?</h2>
-          <p className="mt-2 text-muted-foreground">
-            Het makkelijkste platform voor het boeken van creatieve ruimtes
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {features.map((feature) => (
-            <div key={feature.title} className="text-center">
-              <div className="inline-flex p-4 rounded-full bg-primary/10 text-primary mb-4">
-                <feature.icon className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold text-lg">{feature.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {feature.description}
-              </p>
+    <section className="max-w-[1440px] mx-auto px-8 mt-32 py-20 bg-[#f8f9fa] rounded-[32px]">
+      <h2 className="text-center text-3xl font-extrabold tracking-tight mb-16">Built for Creators</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-16 px-10">
+        {features.map((feature) => (
+          <div key={feature.title} className="text-center flex flex-col items-center">
+            <div className="size-16 rounded-2xl bg-white shadow-sm flex items-center justify-center mb-6">
+              <span className="material-symbols-outlined text-3xl text-primary">{feature.icon}</span>
             </div>
-          ))}
-        </div>
+            <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+            <p className="text-gray-500 text-sm leading-relaxed">{feature.description}</p>
+          </div>
+        ))}
       </div>
     </section>
   )

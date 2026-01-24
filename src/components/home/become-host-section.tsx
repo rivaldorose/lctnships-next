@@ -1,70 +1,25 @@
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ArrowRight, DollarSign, Calendar, Users } from "lucide-react"
+import Image from "next/image"
 
 export function BecomeHostSection() {
   return (
-    <section className="py-20 bg-primary text-primary-foreground">
-      <div className="container">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div>
-            <h2 className="text-3xl md:text-4xl font-bold">
-              Heb je een studio? Begin met verdienen
-            </h2>
-            <p className="mt-4 text-primary-foreground/80 text-lg">
-              Word host op LCNTSHIPS en verdien geld met je creatieve ruimte.
-              Wij zorgen voor het boekingsplatform, jij zorgt voor de ervaring.
-            </p>
-
-            <div className="mt-8 space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="rounded-full bg-primary-foreground/20 p-2">
-                  <DollarSign className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Gratis aanmelden</h3>
-                  <p className="text-sm text-primary-foreground/70">
-                    Geen maandelijkse kosten. Je betaalt alleen 15% commissie per boeking.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="rounded-full bg-primary-foreground/20 p-2">
-                  <Calendar className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Flexibele beschikbaarheid</h3>
-                  <p className="text-sm text-primary-foreground/70">
-                    Jij bepaalt wanneer je studio beschikbaar is en tegen welke prijs.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="rounded-full bg-primary-foreground/20 p-2">
-                  <Users className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Bereik nieuwe klanten</h3>
-                  <p className="text-sm text-primary-foreground/70">
-                    Krijg toegang tot duizenden creatieve professionals die op zoek zijn naar studio&apos;s.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Link href="/become-a-host" className="inline-block mt-8">
-              <Button size="lg" variant="secondary">
-                Word host
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-
-          <div className="relative">
-            <div className="aspect-square bg-primary-foreground/10 rounded-2xl flex items-center justify-center">
-              <span className="text-6xl">🎬</span>
-            </div>
-          </div>
+    <section className="max-w-[1440px] mx-auto px-8 mt-32 mb-20">
+      <div className="relative h-[480px] rounded-[32px] overflow-hidden group">
+        <Image
+          src="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2069"
+          alt="Host your studio"
+          fill
+          className="object-cover transition-transform duration-1000 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-center p-8">
+          <h2 className="text-white text-4xl md:text-5xl font-extrabold mb-8 max-w-2xl">
+            Share your space with the creative world
+          </h2>
+          <Link href="/host/onboarding">
+            <button className="bg-white text-primary px-10 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition-colors">
+              List your studio
+            </button>
+          </Link>
         </div>
       </div>
     </section>
