@@ -3,6 +3,16 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { AddressAutocomplete, AddressData } from "@/components/ui/address-autocomplete"
+
+const emptyAddress: AddressData = {
+  street: "",
+  houseNumber: "",
+  postalCode: "",
+  city: "",
+  country: "",
+  formatted: "",
+}
 
 const studioTypes = [
   { id: "photo", icon: "photo_camera", title: "Photo Studio" },
@@ -17,7 +27,7 @@ export default function OnboardingBasicsPage() {
   const router = useRouter()
   const [selectedType, setSelectedType] = useState<string | null>("photo")
   const [studioName, setStudioName] = useState("")
-  const [location, setLocation] = useState("")
+  const [address, setAddress] = useState<AddressData>(emptyAddress)
   const [description, setDescription] = useState("")
 
   const handleContinue = () => {
@@ -27,12 +37,23 @@ export default function OnboardingBasicsPage() {
       JSON.stringify({
         type: selectedType,
         title: studioName,
-        location,
+        location: address.formatted,
+        address: {
+          street: address.street,
+          houseNumber: address.houseNumber,
+          postalCode: address.postalCode,
+          city: address.city,
+          country: address.country,
+          lat: address.lat,
+          lng: address.lng,
+        },
         description,
       })
     )
     router.push("/host/onboarding/media")
   }
+
+  const isAddressValid = address.street && address.city
 
   return (
     <>
@@ -99,19 +120,15 @@ export default function OnboardingBasicsPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-base font-bold text-gray-900 px-1">Location</label>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-4 top-4 text-gray-400">
-                location_on
-              </span>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full bg-white border-gray-200 rounded-xl h-14 pl-12 pr-5 text-gray-900 focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm placeholder:text-gray-400"
-                placeholder="Enter studio address..."
-              />
-            </div>
+            <label className="text-base font-bold text-gray-900 px-1">Locatie</label>
+            <AddressAutocomplete
+              value={address}
+              onChange={setAddress}
+              placeholder="Zoek je adres..."
+            />
+            <p className="text-xs text-gray-500 px-1 mt-1">
+              Je exacte adres wordt pas getoond na een boeking.
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -138,11 +155,17 @@ export default function OnboardingBasicsPage() {
               Preview
             </span>
             <h4 className="text-xl font-bold text-gray-900 mb-2">
-              {studioName || <span className="italic text-gray-400">The Name of Your Studio...</span>}
+              {studioName || <span className="italic text-gray-400">De naam van je studio...</span>}
             </h4>
+            {address.city && (
+              <div className="flex items-center gap-1 text-gray-500 text-sm mb-2">
+                <span className="material-symbols-outlined text-sm">location_on</span>
+                <span>{address.city}</span>
+              </div>
+            )}
             <p className="text-gray-500 text-sm leading-relaxed max-w-md">
-              Your studio will be visible to thousands of creators once you complete these 5 steps.
-              You can always change these details later.
+              Je studio wordt zichtbaar voor duizenden creators zodra je deze 5 stappen hebt voltooid.
+              Je kunt deze gegevens later altijd wijzigen.
             </p>
           </div>
         </div>
@@ -160,7 +183,7 @@ export default function OnboardingBasicsPage() {
           </Link>
           <button
             onClick={handleContinue}
-            disabled={!studioName || !location}
+            disabled={!studioName || !isAddressValid}
             className="bg-primary hover:bg-primary/90 text-white px-10 py-4 rounded-full font-bold shadow-lg shadow-primary/25 transition-all flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Continue to Media
