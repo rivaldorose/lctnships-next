@@ -20,6 +20,74 @@ interface StudiosPageProps {
   }>
 }
 
+// Mockup studios for display when database is empty
+const mockupStudios = [
+  {
+    id: "mock-1",
+    title: "The Concrete Sanctuary",
+    location: "Berlin, Germany",
+    price_per_hour: 180,
+    studio_type: "industrial",
+    images: ["https://images.unsplash.com/photo-1497366216548-37526070297c?w=800"],
+  },
+  {
+    id: "mock-2",
+    title: "Industrial Daylight Loft",
+    location: "Brooklyn, USA",
+    price_per_hour: 155,
+    studio_type: "loft",
+    images: ["https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800"],
+  },
+  {
+    id: "mock-3",
+    title: "Nordic Glass House",
+    location: "Stockholm, Sweden",
+    price_per_hour: 115,
+    studio_type: "daylight",
+    images: ["https://images.unsplash.com/photo-1497215842964-222b430dc094?w=800"],
+  },
+  {
+    id: "mock-4",
+    title: "Zen Apartment",
+    location: "Tokyo, Japan",
+    price_per_hour: 320,
+    studio_type: "minimalist",
+    images: ["https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800"],
+  },
+  {
+    id: "mock-5",
+    title: "Minimalist Loft",
+    location: "Amsterdam, Netherlands",
+    price_per_hour: 210,
+    studio_type: "loft",
+    images: ["https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800"],
+  },
+  {
+    id: "mock-6",
+    title: "Vintage Film Studio",
+    location: "Los Angeles, USA",
+    price_per_hour: 275,
+    studio_type: "film",
+    images: ["https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800"],
+  },
+  {
+    id: "mock-7",
+    title: "Azure Bay House",
+    location: "Santorini, Greece",
+    price_per_hour: 450,
+    studio_type: "daylight",
+    images: ["https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=800"],
+  },
+  {
+    id: "mock-8",
+    title: "Skyline Penthouse",
+    location: "Chicago, USA",
+    price_per_hour: 285,
+    studio_type: "photo",
+    images: ["https://images.unsplash.com/photo-1502672023488-70e25813eb80?w=800"],
+  },
+]
+
 async function StudiosContent({ searchParams }: StudiosPageProps) {
   const params = await searchParams
   const supabase = await createClient()
@@ -44,18 +112,15 @@ async function StudiosContent({ searchParams }: StudiosPageProps) {
 
   const { data: studios, error } = await query
 
-  if (error) {
-    console.error("Error fetching studios:", error)
-    return (
-      <div className="text-center py-20">
-        <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">error</span>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Er ging iets mis</h3>
-        <p className="text-gray-500">Kon de studios niet laden. Probeer het later opnieuw.</p>
-      </div>
-    )
+  // Use mockup data if no studios found or error
+  let displayStudios = studios && studios.length > 0 ? studios : mockupStudios
+
+  // Filter mockup data if type filter is applied
+  if ((!studios || studios.length === 0) && params.type) {
+    displayStudios = mockupStudios.filter(s => s.studio_type === params.type)
   }
 
-  if (!studios || studios.length === 0) {
+  if (displayStudios.length === 0) {
     return (
       <div className="text-center py-20">
         <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">search_off</span>
@@ -67,7 +132,7 @@ async function StudiosContent({ searchParams }: StudiosPageProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-      {studios.map((studio) => (
+      {displayStudios.map((studio) => (
         <StudioCard key={studio.id} studio={studio} />
       ))}
     </div>
@@ -92,25 +157,9 @@ export default async function StudiosPage(props: StudiosPageProps) {
   const params = await props.searchParams
 
   return (
-    <div className="min-h-screen bg-[#fcfcfc]">
-      <header className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold tracking-tight text-primary">lcntships</h1>
-        </Link>
-        <div className="flex items-center gap-4">
-          <Link href="/host/onboarding" className="text-sm font-semibold text-gray-700 hover:text-primary transition-colors">
-            List your studio
-          </Link>
-          <button className="p-2 rounded-full bg-white shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors">
-            <span className="material-symbols-outlined text-[20px]">notifications</span>
-          </button>
-          <Link href="/login" className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm bg-primary flex items-center justify-center text-white">
-            <span className="material-symbols-outlined text-[20px]">person</span>
-          </Link>
-        </div>
-      </header>
-
-      <section className="max-w-7xl mx-auto px-6 mb-12">
+    <div className="bg-[#fcfcfc]">
+      {/* Search Section */}
+      <section className="max-w-7xl mx-auto px-6 py-8 mb-4">
         <Suspense>
           <MarketplaceSearch />
         </Suspense>

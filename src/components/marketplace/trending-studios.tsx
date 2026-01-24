@@ -2,6 +2,27 @@ import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import Image from "next/image"
 
+const mockupTrending = [
+  {
+    id: "trending-1",
+    title: "The Concrete Sanctuary",
+    location: "Berlin, Germany",
+    images: ["https://images.unsplash.com/photo-1497366216548-37526070297c?w=800"],
+  },
+  {
+    id: "trending-2",
+    title: "Industrial Daylight Loft",
+    location: "Brooklyn, USA",
+    images: ["https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800"],
+  },
+  {
+    id: "trending-3",
+    title: "Nordic Glass House",
+    location: "Stockholm, Sweden",
+    images: ["https://images.unsplash.com/photo-1497215842964-222b430dc094?w=800"],
+  },
+]
+
 export async function TrendingStudios() {
   const supabase = await createClient()
 
@@ -12,9 +33,8 @@ export async function TrendingStudios() {
     .order("created_at", { ascending: false })
     .limit(3)
 
-  if (!studios || studios.length === 0) {
-    return null
-  }
+  // Use mockup data if no studios found
+  const displayStudios = studios && studios.length > 0 ? studios : mockupTrending
 
   return (
     <div>
@@ -34,7 +54,7 @@ export async function TrendingStudios() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {studios.map((studio) => (
+        {displayStudios.map((studio) => (
           <Link
             key={studio.id}
             href={`/studios/${studio.id}`}
