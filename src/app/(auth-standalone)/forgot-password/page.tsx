@@ -1,7 +1,7 @@
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form"
 
 export const metadata = {
-  title: "Wachtwoord Vergeten",
+  title: "Reset Password | lcntships",
 }
 
 export default function ForgotPasswordPage() {
