@@ -37,9 +37,11 @@ export async function updateSession(request: NextRequest) {
 
   // Protected routes
   const protectedPaths = ['/dashboard', '/bookings', '/projects', '/messages', '/profile', '/settings', '/host', '/book']
+  const publicHostPaths = ['/host/onboarding'] // Allow studio creation without login
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
+  const isPublicHostPath = publicHostPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
-  if (isProtectedPath && !user) {
+  if (isProtectedPath && !isPublicHostPath && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', request.nextUrl.pathname)

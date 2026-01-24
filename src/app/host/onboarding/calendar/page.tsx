@@ -1,21 +1,35 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useCallback, useRef, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 
 const daysOfWeek = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
 
-export default function OnboardingCalendarPage() {
+function CalendarPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [availableDays, setAvailableDays] = useState([1, 2, 3, 4]) // Tue-Fri
   const [minDuration, setMinDuration] = useState("2")
   const [prepTime, setPrepTime] = useState("30")
   const [bookingNotice, setBookingNotice] = useState("24")
   const [instantBook, setInstantBook] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const hasAutoPublished = useRef(false)
+
+  // Load saved draft settings on mount
+  useEffect(() => {
+    const draft = JSON.parse(localStorage.getItem("studio_draft") || "{}")
+    if (draft.available_days) setAvailableDays(draft.available_days)
+    if (draft.min_booking_hours) setMinDuration(String(draft.min_booking_hours))
+    if (draft.prep_time_minutes) setPrepTime(String(draft.prep_time_minutes))
+    if (draft.booking_notice_hours) setBookingNotice(String(draft.booking_notice_hours))
+    if (draft.instant_book !== undefined) setInstantBook(draft.instant_book)
+    setIsLoaded(true)
+  }, [])
 
   const toggleDay = (index: number) => {
     setAvailableDays((prev) =>
@@ -23,20 +37,34 @@ export default function OnboardingCalendarPage() {
     )
   }
 
-  const handlePublish = async () => {
+  const handlePublish = useCallback(async () => {
     setIsSubmitting(true)
 
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
+      // Save calendar settings to draft before checking login
+      const currentDraft = JSON.parse(localStorage.getItem("studio_draft") || "{}")
+      const updatedDraft = {
+        ...currentDraft,
+        available_days: availableDays,
+        min_booking_hours: parseInt(minDuration),
+        prep_time_minutes: parseInt(prepTime),
+        booking_notice_hours: parseInt(bookingNotice),
+        instant_book: instantBook,
+      }
+      localStorage.setItem("studio_draft", JSON.stringify(updatedDraft))
+
       if (!user) {
-        toast.error("Please log in to create a studio")
-        router.push("/login?redirect=/host/onboarding")
+        toast.info("Log in om je studio te publiceren", {
+          description: "Je voortgang wordt bewaard"
+        })
+        router.push("/login?redirect=/host/onboarding/calendar&publish=true")
         return
       }
 
-      const draft = JSON.parse(localStorage.getItem("studio_draft") || "{}")
+      const draft = updatedDraft
 
       const studioData = {
         host_id: user.id,
@@ -73,14 +101,26 @@ export default function OnboardingCalendarPage() {
       // Clear draft
       localStorage.removeItem("studio_draft")
 
-      toast.success("Studio published successfully!")
+      toast.success("Studio gepubliceerd!")
       router.push(`/host/onboarding/success?id=${data.id}`)
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Something went wrong")
+      toast.error("Er ging iets mis")
       setIsSubmitting(false)
     }
-  }
+  }, [availableDays, minDuration, prepTime, bookingNotice, instantBook, router])
+
+  // Auto-publish after login redirect
+  useEffect(() => {
+    const shouldPublish = searchParams.get("publish") === "true"
+    if (shouldPublish && isLoaded && !hasAutoPublished.current) {
+      hasAutoPublished.current = true
+      // Small delay to ensure state is properly loaded from localStorage
+      setTimeout(() => {
+        handlePublish()
+      }, 100)
+    }
+  }, [searchParams, isLoaded, handlePublish])
 
   return (
     <>
@@ -278,5 +318,17 @@ export default function OnboardingCalendarPage() {
         </div>
       </footer>
     </>
+  )
+}
+
+export default function OnboardingCalendarPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
+      </div>
+    }>
+      <CalendarPageContent />
+    </Suspense>
   )
 }
