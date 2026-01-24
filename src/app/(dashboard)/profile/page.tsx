@@ -1,17 +1,52 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { UserAvatar } from "@/components/shared/user-avatar"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { MapPin, Calendar, Star, Edit } from "lucide-react"
-import Link from "next/link"
-import { formatDate } from "@/lib/utils/format-date"
+import { ProfileClient } from "./profile-client"
 
 export const metadata = {
   title: "Profiel",
 }
+
+// Mock portfolio items
+const mockPortfolio = [
+  {
+    id: "1",
+    title: "Urban Geometry, 2023",
+    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800",
+  },
+  {
+    id: "2",
+    title: "Behind the Lens",
+    image: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=600",
+  },
+  {
+    id: "3",
+    title: "Natural Light Series",
+    image: "https://images.unsplash.com/photo-1497215842964-222b430dc094?w=800",
+  },
+  {
+    id: "4",
+    title: "Night Frames",
+    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600",
+  },
+  {
+    id: "5",
+    title: "Character Study",
+    image: "https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800",
+  },
+  {
+    id: "6",
+    title: "Abstract Spaces",
+    image: "https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=600",
+  },
+]
+
+// Mock equipment preferences
+const mockEquipment = [
+  "RED Komodo 6K",
+  "Arri Skypanel",
+  "Aputure 600d",
+  "Sigma Art Lenses",
+]
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -42,124 +77,42 @@ export default async function ProfilePage() {
     .eq("renter_id", user.id)
     .eq("status", "completed")
 
+  // Get user's studios if host
+  const { data: studios } = await supabase
+    .from("studios")
+    .select("id, title, location, price_per_hour, avg_rating, images, studio_images(*)")
+    .eq("host_id", user.id)
+    .limit(4)
+
+  // Build profile data with mock fallbacks
+  const profileData = {
+    id: user.id,
+    full_name: profile?.full_name || "Creative Professional",
+    email: profile?.email || user.email,
+    avatar_url: profile?.avatar_url,
+    bio: profile?.bio || "Narrative & Commercial specialist with a focus on minimalist lighting and architectural composition.",
+    location: profile?.location || "Amsterdam, Netherlands",
+    professional_title: profile?.professional_title || "Cinematographer & Photographer",
+    user_type: profile?.user_type || "renter",
+    is_verified: profile?.is_verified || true,
+    created_at: profile?.created_at || "2021-01-01",
+    response_rate: profile?.response_rate || 98,
+    response_time: profile?.response_time || "within an hour",
+    equipment_preferences: profile?.equipment_preferences || mockEquipment,
+    is_accepting_projects: profile?.is_accepting_projects ?? true,
+    portfolio: mockPortfolio,
+  }
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Mijn Profiel</h1>
-        <Link href="/profile/edit">
-          <Button variant="outline">
-            <Edit className="mr-2 h-4 w-4" />
-            Bewerken
-          </Button>
-        </Link>
-      </div>
-
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Avatar */}
-            <div className="flex flex-col items-center">
-              <UserAvatar
-                src={profile?.avatar_url}
-                name={profile?.full_name}
-                size="xl"
-                className="h-24 w-24"
-              />
-              <Badge className="mt-4" variant="secondary">
-                {profile?.user_type === "host"
-                  ? "Host"
-                  : profile?.user_type === "both"
-                  ? "Host & Huurder"
-                  : "Huurder"}
-              </Badge>
-            </div>
-
-            {/* Info */}
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold">{profile?.full_name}</h2>
-              {profile?.location && (
-                <div className="flex items-center text-muted-foreground mt-1">
-                  <MapPin className="h-4 w-4 mr-1" />
-                  {profile.location}
-                </div>
-              )}
-              <div className="flex items-center text-muted-foreground mt-1">
-                <Calendar className="h-4 w-4 mr-1" />
-                Lid sinds {formatDate(profile?.created_at || "", "MMMM yyyy")}
-              </div>
-
-              {profile?.bio && (
-                <p className="mt-4 text-muted-foreground">{profile.bio}</p>
-              )}
-
-              {/* Stats */}
-              <div className="flex gap-8 mt-6">
-                <div>
-                  <p className="text-2xl font-bold">{bookingCount || 0}</p>
-                  <p className="text-sm text-muted-foreground">Boekingen</p>
-                </div>
-                {reviewsReceived && reviewsReceived.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1">
-                      <p className="text-2xl font-bold">{avgRating.toFixed(1)}</p>
-                      <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {reviewsReceived.length} reviews
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Contact info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Contactgegevens</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">E-mail</span>
-            <span>{profile?.email}</span>
-          </div>
-          {profile?.phone && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Telefoon</span>
-              <span>{profile.phone}</span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Verification */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Verificatie</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span>E-mail geverifieerd</span>
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
-                Geverifieerd
-              </Badge>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span>Telefoon geverifieerd</span>
-              <Badge variant="secondary">Niet geverifieerd</Badge>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span>ID geverifieerd</span>
-              <Badge variant="secondary">Niet geverifieerd</Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ProfileClient
+      profile={profileData}
+      stats={{
+        bookingCount: bookingCount || 0,
+        avgRating,
+        reviewCount: reviewsReceived?.length || 0,
+      }}
+      studios={studios || []}
+      isOwnProfile={true}
+    />
   )
 }
