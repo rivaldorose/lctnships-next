@@ -1,0 +1,156 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+
+const studioTypes = [
+  { id: "photo", label: "Photo Studio" },
+  { id: "video", label: "Video Production" },
+  { id: "podcast", label: "Podcast Suite" },
+  { id: "music", label: "Music Studio" },
+  { id: "dance", label: "Dance Studio" },
+  { id: "art", label: "Art Gallery" },
+]
+
+export function MarketplaceSearch() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [location, setLocation] = useState(searchParams.get("city") || "")
+  const [date, setDate] = useState(searchParams.get("date") || "")
+  const [studioType, setStudioType] = useState(searchParams.get("type") || "")
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false)
+  const [showDateDropdown, setShowDateDropdown] = useState(false)
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false)
+
+  const handleSearch = () => {
+    const params = new URLSearchParams()
+    if (location) params.set("city", location)
+    if (date) params.set("date", date)
+    if (studioType) params.set("type", studioType)
+    router.push(`/studios?${params.toString()}`)
+  }
+
+  const popularCities = ["Amsterdam", "Rotterdam", "Utrecht", "Den Haag", "Eindhoven", "Groningen"]
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative flex items-center bg-white rounded-[3.5rem] px-3 py-2 shadow-xl shadow-gray-200/50 border border-gray-100">
+        <div className="flex items-center">
+          {/* Location */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowLocationDropdown(!showLocationDropdown)
+                setShowDateDropdown(false)
+                setShowTypeDropdown(false)
+              }}
+              className="flex items-center gap-2 px-6 py-4 hover:bg-gray-50 rounded-[2.5rem] transition-all group"
+            >
+              <span className="material-symbols-outlined text-gray-400 group-hover:text-primary">location_on</span>
+              <span className="text-sm font-medium">{location || "Location"}</span>
+            </button>
+            {showLocationDropdown && (
+              <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-50">
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Search city..."
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Popular</p>
+                <div className="flex flex-wrap gap-2">
+                  {popularCities.map((city) => (
+                    <button
+                      key={city}
+                      onClick={() => {
+                        setLocation(city)
+                        setShowLocationDropdown(false)
+                      }}
+                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs font-medium transition-colors"
+                    >
+                      {city}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="h-8 w-px bg-gray-200" />
+
+          {/* Date */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowDateDropdown(!showDateDropdown)
+                setShowLocationDropdown(false)
+                setShowTypeDropdown(false)
+              }}
+              className="flex items-center gap-2 px-6 py-4 hover:bg-gray-50 rounded-[2.5rem] transition-all group"
+            >
+              <span className="material-symbols-outlined text-gray-400 group-hover:text-primary">calendar_today</span>
+              <span className="text-sm font-medium">{date || "Dates"}</span>
+            </button>
+            {showDateDropdown && (
+              <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-50">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => {
+                    setDate(e.target.value)
+                    setShowDateDropdown(false)
+                  }}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="h-8 w-px bg-gray-200" />
+
+          {/* Studio Type (instead of Guests) */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowTypeDropdown(!showTypeDropdown)
+                setShowLocationDropdown(false)
+                setShowDateDropdown(false)
+              }}
+              className="flex items-center gap-2 px-6 py-4 hover:bg-gray-50 rounded-[2.5rem] transition-all group"
+            >
+              <span className="material-symbols-outlined text-gray-400 group-hover:text-primary">category</span>
+              <span className="text-sm font-medium">{studioType ? studioTypes.find(t => t.id === studioType)?.label : "Studio Type"}</span>
+            </button>
+            {showTypeDropdown && (
+              <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50">
+                {studioTypes.map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => {
+                      setStudioType(type.id)
+                      setShowTypeDropdown(false)
+                    }}
+                    className={`w-full px-4 py-3 text-left rounded-xl text-sm font-medium transition-colors ${
+                      studioType === type.id ? "bg-primary/10 text-primary" : "hover:bg-gray-50"
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Search Button */}
+          <button
+            onClick={handleSearch}
+            className="ml-2 w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-primary/20"
+          >
+            <span className="material-symbols-outlined">search</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
