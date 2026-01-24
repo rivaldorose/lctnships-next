@@ -3,11 +3,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
@@ -16,12 +11,19 @@ export function SignupForm() {
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!agreedToTerms) {
+      toast.error("Please agree to the terms and conditions")
+      return
+    }
+
     setIsLoading(true)
 
     const { data, error } = await supabase.auth.signUp({
@@ -35,7 +37,7 @@ export function SignupForm() {
     })
 
     if (error) {
-      toast.error("Aanmelden mislukt", {
+      toast.error("Sign up failed", {
         description: error.message,
       })
       setIsLoading(false)
@@ -52,8 +54,8 @@ export function SignupForm() {
       })
     }
 
-    toast.success("Account aangemaakt!", {
-      description: "Controleer je e-mail om je account te verifiëren.",
+    toast.success("Account created!", {
+      description: "Check your email to verify your account.",
     })
     router.push("/onboarding")
   }
@@ -67,75 +69,128 @@ export function SignupForm() {
     })
 
     if (error) {
-      toast.error("Google aanmelden mislukt", {
+      toast.error("Google sign up failed", {
+        description: error.message,
+      })
+    }
+  }
+
+  const handleAppleSignup = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: {
+        redirectTo: `${window.location.origin}/api/auth/callback?redirect=/onboarding`,
+      },
+    })
+
+    if (error) {
+      toast.error("Apple sign up failed", {
         description: error.message,
       })
     }
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <Link href="/" className="text-2xl font-bold mb-2">LCNTSHIPS</Link>
-        <CardTitle>Maak een account</CardTitle>
-        <CardDescription>Begin met het boeken van creatieve studio&apos;s</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSignup} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Volledige naam</Label>
-            <Input
-              id="fullName"
-              type="text"
-              placeholder="Jan Jansen"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="naam@voorbeeld.nl"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Wachtwoord</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Minimaal 8 karakters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={8}
-              required
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Account aanmaken
-          </Button>
-        </form>
+    <div className="w-full">
+      {/* Logo */}
+      <Link href="/" className="flex items-center justify-center gap-3 mb-8">
+        <div className="size-12 rounded-full bg-[#0f49bd] flex items-center justify-center">
+          <span className="material-symbols-outlined text-white text-2xl">photo_camera</span>
+        </div>
+        <span className="text-2xl font-extrabold tracking-tight">lcntships</span>
+      </Link>
 
-        <div className="relative my-6">
-          <Separator />
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-            of ga verder met
-          </span>
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-extrabold tracking-tight mb-2">Create an account</h1>
+        <p className="text-gray-500">Start booking creative studios today</p>
+      </div>
+
+      {/* Form */}
+      <form onSubmit={handleSignup} className="space-y-5">
+        <div>
+          <input
+            id="fullName"
+            type="text"
+            placeholder="Full name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+            className="w-full h-14 px-6 rounded-full border border-gray-200 text-base focus:outline-none focus:ring-2 focus:ring-[#0f49bd] focus:border-transparent transition-all"
+          />
+        </div>
+        <div>
+          <input
+            id="email"
+            type="email"
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full h-14 px-6 rounded-full border border-gray-200 text-base focus:outline-none focus:ring-2 focus:ring-[#0f49bd] focus:border-transparent transition-all"
+          />
+        </div>
+        <div>
+          <input
+            id="password"
+            type="password"
+            placeholder="Password (min. 8 characters)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
+            required
+            className="w-full h-14 px-6 rounded-full border border-gray-200 text-base focus:outline-none focus:ring-2 focus:ring-[#0f49bd] focus:border-transparent transition-all"
+          />
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={handleGoogleSignup}
+        {/* Terms checkbox */}
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            className="mt-1 size-5 rounded border-gray-300 text-[#0f49bd] focus:ring-[#0f49bd]"
+          />
+          <span className="text-sm text-gray-500">
+            I agree to the{" "}
+            <Link href="/terms" className="text-[#0f49bd] hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="text-[#0f49bd] hover:underline">
+              Privacy Policy
+            </Link>
+          </span>
+        </label>
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full h-14 bg-[#0f49bd] text-white rounded-full font-bold text-base hover:bg-[#0d3ea0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         >
-          <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+          {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+          Create account
+        </button>
+      </form>
+
+      {/* Divider */}
+      <div className="relative my-8">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="bg-white px-4 text-gray-500">or continue with</span>
+        </div>
+      </div>
+
+      {/* Social Login */}
+      <div className="flex gap-4">
+        <button
+          type="button"
+          onClick={handleGoogleSignup}
+          className="flex-1 h-14 border border-gray-200 rounded-full flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors font-medium"
+        >
+          <svg className="h-5 w-5" viewBox="0 0 24 24">
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
               fill="#4285F4"
@@ -153,28 +208,27 @@ export function SignupForm() {
               fill="#EA4335"
             />
           </svg>
-          Doorgaan met Google
-        </Button>
+          Google
+        </button>
+        <button
+          type="button"
+          onClick={handleAppleSignup}
+          className="flex-1 h-14 border border-gray-200 rounded-full flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors font-medium"
+        >
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+          </svg>
+          Apple
+        </button>
+      </div>
 
-        <p className="text-xs text-muted-foreground text-center mt-4">
-          Door je aan te melden ga je akkoord met onze{" "}
-          <Link href="/terms" className="text-primary hover:underline">
-            Algemene Voorwaarden
-          </Link>{" "}
-          en{" "}
-          <Link href="/privacy" className="text-primary hover:underline">
-            Privacybeleid
-          </Link>
-        </p>
-      </CardContent>
-      <CardFooter className="justify-center">
-        <p className="text-sm text-muted-foreground">
-          Heb je al een account?{" "}
-          <Link href="/login" className="text-primary hover:underline">
-            Inloggen
-          </Link>
-        </p>
-      </CardFooter>
-    </Card>
+      {/* Sign in link */}
+      <p className="text-center mt-8 text-gray-500">
+        Already have an account?{" "}
+        <Link href="/login" className="text-[#0f49bd] font-bold hover:underline">
+          Sign in
+        </Link>
+      </p>
+    </div>
   )
 }
