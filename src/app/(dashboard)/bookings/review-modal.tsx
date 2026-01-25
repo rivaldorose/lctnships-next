@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 interface Booking {
   id: string
@@ -18,26 +19,50 @@ interface Booking {
 interface ReviewModalProps {
   booking: Booking
   onClose: () => void
+  onSuccess?: () => void
 }
 
-export function ReviewModal({ booking, onClose }: ReviewModalProps) {
+export function ReviewModal({ booking, onClose, onSuccess }: ReviewModalProps) {
+  const router = useRouter()
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
   const [reviewText, setReviewText] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const coverImage = booking.studio.studio_images?.find((img) => img.is_cover) || booking.studio.studio_images?.[0]
 
   const handleSubmit = async () => {
     if (rating === 0) return
     setIsSubmitting(true)
+    setError(null)
 
-    // TODO: Implement actual review submission
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const response = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          booking_id: booking.id,
+          studio_id: booking.studio.id,
+          rating,
+          comment: reviewText || null,
+        }),
+      })
 
-    console.log("Submitting review:", { rating, reviewText })
-    setIsSubmitting(false)
-    onClose()
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit review")
+      }
+
+      router.refresh()
+      onSuccess?.()
+      onClose()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const displayRating = hoveredRating || rating
@@ -180,34 +205,43 @@ export function ReviewModal({ booking, onClose }: ReviewModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-6 pt-4 border-t border-gray-100 flex gap-4">
-          <button
-            onClick={onClose}
-            className="flex-1 px-6 py-3 rounded-full border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={rating === 0 || isSubmitting}
-            className={`flex-1 px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-              rating > 0 && !isSubmitting
-                ? "bg-[#2b6cee] text-white hover:bg-[#2b6cee]/90 shadow-lg shadow-[#2b6cee]/20"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            {isSubmitting ? (
-              <>
-                <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
-                Submitting...
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-lg">send</span>
-                Submit Review
-              </>
-            )}
-          </button>
+        <div className="p-6 pt-4 border-t border-gray-100">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-600 text-sm">
+              <span className="material-symbols-outlined text-lg">error</span>
+              {error}
+            </div>
+          )}
+          <div className="flex gap-4">
+            <button
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="flex-1 px-6 py-3 rounded-full border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={rating === 0 || isSubmitting}
+              className={`flex-1 px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                rating > 0 && !isSubmitting
+                  ? "bg-[#2b6cee] text-white hover:bg-[#2b6cee]/90 shadow-lg shadow-[#2b6cee]/20"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">send</span>
+                  Submit Review
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

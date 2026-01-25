@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 interface Booking {
   id: string
@@ -21,6 +22,7 @@ interface Booking {
 interface RescheduleModalProps {
   booking: Booking
   onClose: () => void
+  onSuccess?: () => void
 }
 
 const TIME_SLOTS = [
@@ -28,10 +30,13 @@ const TIME_SLOTS = [
   "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM"
 ]
 
-export function RescheduleModal({ booking, onClose }: RescheduleModalProps) {
-  const [selectedDate, setSelectedDate] = useState<number | null>(25)
+export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModalProps) {
+  const router = useRouter()
+  const [selectedDate, setSelectedDate] = useState<number | null>(null)
   const [selectedTime, setSelectedTime] = useState<string>("10:00 AM")
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const coverImage = booking.studio.studio_images?.find((img) => img.is_cover) || booking.studio.studio_images?.[0]
 
@@ -86,10 +91,55 @@ export function RescheduleModal({ booking, onClose }: RescheduleModalProps) {
     return newDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })
   }
 
-  const handleConfirm = () => {
-    // TODO: Implement actual reschedule logic
-    console.log("Rescheduling to:", selectedDate, selectedTime)
-    onClose()
+  const handleConfirm = async () => {
+    if (!selectedDate) return
+
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      // Parse selected time (e.g., "10:00 AM" -> hours)
+      const [timePart, ampm] = selectedTime.split(" ")
+      const [hours, minutes] = timePart.split(":").map(Number)
+      let hour24 = hours
+      if (ampm === "PM" && hours !== 12) hour24 += 12
+      if (ampm === "AM" && hours === 12) hour24 = 0
+
+      // Create new start datetime
+      const newStartDate = new Date(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth(),
+        selectedDate,
+        hour24,
+        minutes
+      )
+
+      // Calculate new end datetime based on original duration
+      const newEndDate = new Date(newStartDate.getTime() + booking.total_hours * 60 * 60 * 1000)
+
+      const response = await fetch(`/api/bookings/${booking.id}/reschedule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          new_start_datetime: newStartDate.toISOString(),
+          new_end_datetime: newEndDate.toISOString(),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to reschedule booking")
+      }
+
+      router.refresh()
+      onSuccess?.()
+      onClose()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   // Unavailable times (mock)
@@ -260,31 +310,48 @@ export function RescheduleModal({ booking, onClose }: RescheduleModalProps) {
         {/* Footer */}
         <div className="p-8 pt-4 flex flex-col md:flex-row items-center justify-between gap-4 border-t border-gray-100">
           <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#2b6cee]">info</span>
-            <p className="text-sm text-gray-500">
-              You are changing to{" "}
-              <span className="font-bold text-[#0d121b]">
-                {getNewDateString()}, {selectedTime}
-              </span>
-            </p>
+            {error ? (
+              <>
+                <span className="material-symbols-outlined text-red-500">error</span>
+                <p className="text-sm text-red-500">{error}</p>
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-[#2b6cee]">info</span>
+                <p className="text-sm text-gray-500">
+                  You are changing to{" "}
+                  <span className="font-bold text-[#0d121b]">
+                    {getNewDateString()}, {selectedTime}
+                  </span>
+                </p>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-4 w-full md:w-auto">
             <button
               onClick={onClose}
-              className="px-8 h-14 text-sm font-bold text-gray-500 hover:text-[#0d121b] transition-colors"
+              disabled={isSubmitting}
+              className="px-8 h-14 text-sm font-bold text-gray-500 hover:text-[#0d121b] transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
-              disabled={!selectedDate}
-              className={`flex-1 md:flex-none min-w-[200px] px-8 h-14 items-center justify-center rounded-full text-base font-bold shadow-xl transition-all ${
-                selectedDate
+              disabled={!selectedDate || isSubmitting}
+              className={`flex-1 md:flex-none min-w-[200px] px-8 h-14 items-center justify-center rounded-full text-base font-bold shadow-xl transition-all flex gap-2 ${
+                selectedDate && !isSubmitting
                   ? "bg-[#0d121b] text-white hover:scale-[1.02] active:scale-[0.98]"
                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
             >
-              Confirm New Date
+              {isSubmitting ? (
+                <>
+                  <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                  Rescheduling...
+                </>
+              ) : (
+                "Confirm New Date"
+              )}
             </button>
           </div>
         </div>
