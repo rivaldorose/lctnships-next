@@ -1,100 +1,169 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 
 type NotificationType = "all" | "bookings" | "messages" | "projects"
 
 interface Notification {
   id: string
-  type: "booking" | "message" | "review" | "project"
+  type: string
   title: string
-  description: string
-  time: string
-  isRead: boolean
-  actionLabel?: string
-  actionHref?: string
+  message: string
+  link?: string
+  is_read: boolean
+  created_at: string
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "booking",
-    title: "New booking request for Studio A",
-    description: "Alex requested a full-day booking for next Friday in the Loft Space.",
-    time: "2m ago",
-    isRead: false,
-    actionLabel: "Review",
-    actionHref: "/bookings/1",
-  },
-  {
-    id: "2",
-    type: "message",
-    title: "Alex sent you a message",
-    description: '"Is there a backdrop stand available in the studio?"',
-    time: "15m ago",
-    isRead: false,
-    actionLabel: "Reply",
-    actionHref: "/messages",
-  },
-  {
-    id: "3",
-    type: "review",
-    title: "You received a 5-star rating",
-    description: '"The lighting in this space is phenomenal for high-key fashion."',
-    time: "2h ago",
-    isRead: true,
-  },
-  {
-    id: "4",
-    type: "project",
-    title: "Project 'Spring Collection' updated",
-    description: "3 new files were uploaded to the project asset folder.",
-    time: "Yesterday",
-    isRead: true,
-  },
-]
-
-const typeIcons: Record<Notification["type"], { icon: string; bgClass: string; textClass: string }> = {
-  booking: {
+const typeIcons: Record<string, { icon: string; bgClass: string; textClass: string }> = {
+  booking_request: {
     icon: "calendar_today",
     bgClass: "bg-primary/10",
     textClass: "text-primary",
   },
-  message: {
+  booking_confirmed: {
+    icon: "check_circle",
+    bgClass: "bg-green-100",
+    textClass: "text-green-600",
+  },
+  booking_cancelled: {
+    icon: "cancel",
+    bgClass: "bg-red-100",
+    textClass: "text-red-600",
+  },
+  booking_rescheduled: {
+    icon: "schedule",
+    bgClass: "bg-orange-100",
+    textClass: "text-orange-600",
+  },
+  new_message: {
     icon: "chat_bubble",
-    bgClass: "bg-indigo-100 dark:bg-indigo-900/30",
-    textClass: "text-indigo-600 dark:text-indigo-400",
+    bgClass: "bg-indigo-100",
+    textClass: "text-indigo-600",
   },
-  review: {
+  new_review: {
     icon: "star",
-    bgClass: "bg-amber-100 dark:bg-amber-900/30",
-    textClass: "text-amber-600 dark:text-amber-400",
+    bgClass: "bg-amber-100",
+    textClass: "text-amber-600",
   },
-  project: {
-    icon: "account_tree",
-    bgClass: "bg-emerald-100 dark:bg-emerald-900/30",
-    textClass: "text-emerald-600 dark:text-emerald-400",
+  payout_processed: {
+    icon: "payments",
+    bgClass: "bg-emerald-100",
+    textClass: "text-emerald-600",
   },
+  default: {
+    icon: "notifications",
+    bgClass: "bg-gray-100",
+    textClass: "text-gray-600",
+  },
+}
+
+function getRelativeTime(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+  if (diffInSeconds < 60) return "Just now"
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
 export default function NotificationsPage() {
   const [filter, setFilter] = useState<NotificationType>("all")
-  const [notifications, setNotifications] = useState(mockNotifications)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch("/api/notifications")
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch notifications")
+      }
+
+      setNotifications(data.notifications || [])
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const filteredNotifications = notifications.filter((n) => {
     if (filter === "all") return true
-    if (filter === "bookings") return n.type === "booking"
-    if (filter === "messages") return n.type === "message"
-    if (filter === "projects") return n.type === "project" || n.type === "review"
+    if (filter === "bookings") return n.type.includes("booking")
+    if (filter === "messages") return n.type.includes("message")
+    if (filter === "projects") return n.type.includes("review") || n.type.includes("payout")
     return true
   })
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+  const markAllAsRead = async () => {
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mark_all_read: true }),
+      })
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
+    } catch (err) {
+      console.error("Failed to mark all as read:", err)
+    }
   }
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length
+  const markAsRead = async (id: string) => {
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notification_id: id }),
+      })
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+      )
+    } catch (err) {
+      console.error("Failed to mark as read:", err)
+    }
+  }
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length
+
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="flex flex-col items-center justify-center py-20">
+          <span className="material-symbols-outlined text-4xl text-primary animate-spin">
+            progress_activity
+          </span>
+          <p className="mt-4 text-gray-500">Loading notifications...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="flex flex-col items-center justify-center py-20">
+          <span className="material-symbols-outlined text-4xl text-red-500">error</span>
+          <p className="mt-4 text-red-500">{error}</p>
+          <button
+            onClick={fetchNotifications}
+            className="mt-4 px-6 py-2 bg-primary text-white rounded-full font-bold"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (notifications.length === 0) {
     return <NotificationsEmptyState />
@@ -145,18 +214,19 @@ export default function NotificationsPage() {
       {/* Notifications List */}
       <div className="flex flex-col gap-4">
         {filteredNotifications.map((notification) => {
-          const iconConfig = typeIcons[notification.type]
+          const iconConfig = typeIcons[notification.type] || typeIcons.default
           return (
             <div
               key={notification.id}
-              className={`relative group flex items-center justify-between gap-6 p-6 rounded-2xl transition-all border ${
-                notification.isRead
+              onClick={() => !notification.is_read && markAsRead(notification.id)}
+              className={`relative group flex items-center justify-between gap-6 p-6 rounded-2xl transition-all border cursor-pointer ${
+                notification.is_read
                   ? "bg-gray-50 border-gray-100 opacity-80 hover:opacity-100"
                   : "bg-white border-transparent hover:shadow-xl hover:shadow-gray-200/50 hover:border-primary/20"
               }`}
             >
               {/* Unread Indicator Dot */}
-              {!notification.isRead && (
+              {!notification.is_read && (
                 <div className="absolute left-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 bg-emerald-500 rounded-full shadow-[0_0_0_4px_white] z-10" />
               )}
 
@@ -169,29 +239,26 @@ export default function NotificationsPage() {
                 <div className="flex flex-col">
                   <h3 className="text-lg font-bold leading-tight">{notification.title}</h3>
                   <p className="text-gray-500 text-base mt-1 line-clamp-1">
-                    {notification.type === "message" ? (
-                      <span className="italic">{notification.description}</span>
-                    ) : (
-                      notification.description
-                    )}
+                    {notification.message}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">
-                  {notification.time}
+                  {getRelativeTime(notification.created_at)}
                 </span>
-                {notification.actionLabel && notification.actionHref && (
+                {notification.link && (
                   <Link
-                    href={notification.actionHref}
+                    href={notification.link}
+                    onClick={(e) => e.stopPropagation()}
                     className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                      notification.isRead
+                      notification.is_read
                         ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         : "bg-primary hover:bg-primary/90 text-white"
                     }`}
                   >
-                    {notification.actionLabel}
+                    View
                   </Link>
                 )}
               </div>

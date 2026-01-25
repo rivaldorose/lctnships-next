@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 interface BankDetails {
   accountHolderName: string
@@ -28,8 +29,37 @@ export function PayoutsClient({
   bankDetails: initialBankDetails,
   payoutHistory,
 }: PayoutsClientProps) {
+  const router = useRouter()
   const [stripeConnected, setStripeConnected] = useState(initialStripeConnected)
+  const [stripeStatus, setStripeStatus] = useState<{
+    chargesEnabled?: boolean
+    payoutsEnabled?: boolean
+  }>({})
   const [bankDetails, setBankDetails] = useState(initialBankDetails)
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  useEffect(() => {
+    checkStripeStatus()
+  }, [])
+
+  const checkStripeStatus = async () => {
+    try {
+      const response = await fetch("/api/stripe/connect")
+      const data = await response.json()
+      if (data.connected) {
+        setStripeConnected(true)
+        setStripeStatus({
+          chargesEnabled: data.chargesEnabled,
+          payoutsEnabled: data.payoutsEnabled,
+        })
+      }
+    } catch (err) {
+      console.error("Failed to check Stripe status:", err)
+    }
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("nl-NL", {
@@ -38,14 +68,57 @@ export function PayoutsClient({
     }).format(amount)
   }
 
-  const handleConnectStripe = () => {
-    // TODO: Redirect to Stripe Connect OAuth flow
-    console.log("Connecting to Stripe...")
+  const handleConnectStripe = async () => {
+    setIsConnecting(true)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/stripe/connect", {
+        method: "POST",
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to connect Stripe")
+      }
+
+      // Redirect to Stripe Connect onboarding
+      window.location.href = data.url
+    } catch (err: any) {
+      setError(err.message)
+      setIsConnecting(false)
+    }
   }
 
-  const handleSave = () => {
-    // TODO: Save bank details to database
-    console.log({ bankDetails })
+  const handleSave = async () => {
+    setIsSaving(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const response = await fetch("/api/users/bank-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bank_account_name: bankDetails.accountHolderName,
+          bank_iban: bankDetails.iban,
+          bank_bic: bankDetails.bic,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save bank details")
+      }
+
+      setSuccess("Bank details saved successfully!")
+      router.refresh()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -94,10 +167,20 @@ export function PayoutsClient({
             </div>
             <button
               onClick={handleConnectStripe}
-              className="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-2xl transition-all shadow-md active:scale-[0.98] flex items-center gap-2"
+              disabled={isConnecting}
+              className="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-2xl transition-all shadow-md active:scale-[0.98] flex items-center gap-2 disabled:opacity-50"
             >
-              <span>{stripeConnected ? "Manage Stripe" : "Connect with Stripe"}</span>
-              <span className="material-symbols-outlined text-sm">open_in_new</span>
+              {isConnecting ? (
+                <>
+                  <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                  <span>Connecting...</span>
+                </>
+              ) : (
+                <>
+                  <span>{stripeConnected ? "Manage Stripe" : "Connect with Stripe"}</span>
+                  <span className="material-symbols-outlined text-sm">open_in_new</span>
+                </>
+              )}
             </button>
           </div>
         </section>
@@ -212,6 +295,20 @@ export function PayoutsClient({
           </div>
         </section>
 
+        {/* Messages */}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-600">
+            <span className="material-symbols-outlined">error</span>
+            <p className="text-sm font-medium">{error}</p>
+          </div>
+        )}
+        {success && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-2xl flex items-center gap-3 text-green-600">
+            <span className="material-symbols-outlined">check_circle</span>
+            <p className="text-sm font-medium">{success}</p>
+          </div>
+        )}
+
         {/* Save Action */}
         <div className="flex items-center justify-between p-8 bg-gray-900 rounded-[2rem] shadow-xl text-white">
           <div className="flex flex-col">
@@ -220,9 +317,17 @@ export function PayoutsClient({
           </div>
           <button
             onClick={handleSave}
-            className="bg-white text-gray-900 hover:bg-gray-100 font-black py-4 px-10 rounded-2xl transition-all shadow-lg active:scale-95"
+            disabled={isSaving}
+            className="bg-white text-gray-900 hover:bg-gray-100 font-black py-4 px-10 rounded-2xl transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center gap-2"
           >
-            Save Payout Settings
+            {isSaving ? (
+              <>
+                <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                Saving...
+              </>
+            ) : (
+              "Save Payout Settings"
+            )}
           </button>
         </div>
 

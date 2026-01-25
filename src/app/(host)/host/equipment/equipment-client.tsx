@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 interface Studio {
   id: string
@@ -15,6 +17,8 @@ interface EquipmentClientProps {
 type ConditionType = "new" | "used" | "good"
 
 export function EquipmentClient({ studios }: EquipmentClientProps) {
+  const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState("")
   const [category, setCategory] = useState("")
   const [dailyPrice, setDailyPrice] = useState("")
@@ -22,6 +26,9 @@ export function EquipmentClient({ studios }: EquipmentClientProps) {
   const [description, setDescription] = useState("")
   const [selectedStudio, setSelectedStudio] = useState("")
   const [images, setImages] = useState<string[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const categories = [
     { id: "cameras", label: "Cameras" },
@@ -33,10 +40,94 @@ export function EquipmentClient({ studios }: EquipmentClientProps) {
     { id: "accessories", label: "Accessories" },
   ]
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    if (images.length + files.length > 5) {
+      setError("Maximum 5 images allowed")
+      return
+    }
+
+    setIsUploading(true)
+    setError(null)
+
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("folder", "equipment")
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || "Upload failed")
+        }
+
+        const data = await response.json()
+        return data.url
+      })
+
+      const uploadedUrls = await Promise.all(uploadPromises)
+      setImages((prev) => [...prev, ...uploadedUrls])
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Submit equipment to database
-    console.log({ name, category, dailyPrice, condition, description, selectedStudio, images })
+    setError(null)
+
+    if (!name || !category || !dailyPrice) {
+      setError("Please fill in all required fields")
+      return
+    }
+
+    if (!selectedStudio) {
+      setError("Please select a studio")
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch("/api/equipment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studio_id: selectedStudio,
+          name,
+          description,
+          category,
+          price_per_day: parseFloat(dailyPrice),
+          quantity: 1,
+          is_available: true,
+          image_url: images[0] || null,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to add equipment")
+      }
+
+      router.push("/host/equipment")
+      router.refresh()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -73,24 +164,55 @@ export function EquipmentClient({ studios }: EquipmentClientProps) {
           </div>
 
           {/* Upload Zone */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => handleFileUpload(e.target.files)}
+          />
           <div className="relative group">
             <div
+              onClick={() => fileInputRef.current?.click()}
               className="w-full aspect-square flex flex-col items-center justify-center bg-white hover:bg-primary/5 transition-all cursor-pointer group-hover:scale-[1.01] border-2 border-dashed border-primary"
               style={{ borderRadius: "40% 60% 70% 30% / 40% 50% 60% 50%" }}
             >
-              <div className="size-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                <span className="material-symbols-outlined text-primary text-4xl">cloud_upload</span>
-              </div>
-              <p className="text-lg font-bold mb-1">Drag & drop your photos</p>
-              <p className="text-sm text-gray-400">or click to browse local files</p>
+              {isUploading ? (
+                <>
+                  <span className="material-symbols-outlined text-primary text-4xl animate-spin">progress_activity</span>
+                  <p className="text-lg font-bold mt-4">Uploading...</p>
+                </>
+              ) : (
+                <>
+                  <div className="size-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                    <span className="material-symbols-outlined text-primary text-4xl">cloud_upload</span>
+                  </div>
+                  <p className="text-lg font-bold mb-1">Drag & drop your photos</p>
+                  <p className="text-sm text-gray-400">or click to browse local files</p>
+                </>
+              )}
             </div>
           </div>
 
           {/* Preview Grid */}
           <div className="grid grid-cols-4 gap-4 mt-8">
-            {[0, 1, 2, 3].map((index) => (
+            {images.map((url, index) => (
+              <div key={index} className="aspect-square rounded-2xl overflow-hidden relative group">
+                <Image src={url} alt={`Equipment ${index + 1}`} fill className="object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeImage(index)}
+                  className="absolute top-2 right-2 size-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <span className="material-symbols-outlined text-sm">close</span>
+                </button>
+              </div>
+            ))}
+            {Array.from({ length: Math.max(0, 4 - images.length) }).map((_, index) => (
               <div
-                key={index}
+                key={`empty-${index}`}
+                onClick={() => fileInputRef.current?.click()}
                 className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-primary/50 hover:text-primary/50 transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined">add</span>
@@ -219,14 +341,32 @@ export function EquipmentClient({ studios }: EquipmentClientProps) {
               </div>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-600">
+                <span className="material-symbols-outlined">error</span>
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+            )}
+
             {/* Submit Button */}
             <div className="pt-6 flex flex-col items-center gap-4">
               <button
                 type="submit"
-                className="w-full md:w-auto min-w-[280px] bg-gray-900 text-white font-bold text-lg py-5 px-10 rounded-full shadow-2xl hover:scale-105 transition-transform flex items-center justify-center gap-3"
+                disabled={isSubmitting}
+                className="w-full md:w-auto min-w-[280px] bg-gray-900 text-white font-bold text-lg py-5 px-10 rounded-full shadow-2xl hover:scale-105 transition-transform flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:scale-100"
               >
-                <span>Add to Inventory</span>
-                <span className="material-symbols-outlined">arrow_forward</span>
+                {isSubmitting ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                    <span>Adding...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Add to Inventory</span>
+                    <span className="material-symbols-outlined">arrow_forward</span>
+                  </>
+                )}
               </button>
               <Link
                 href="/host/equipment"

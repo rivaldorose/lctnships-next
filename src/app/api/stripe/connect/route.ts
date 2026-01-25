@@ -1,0 +1,130 @@
+import { createClient } from "@/lib/supabase/server"
+import { stripe } from "@/lib/stripe/config"
+import { NextResponse } from "next/server"
+
+// POST /api/stripe/connect - Create Stripe Connect account and onboarding link
+export async function POST(request: Request) {
+  try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: "Stripe is not configured" },
+        { status: 500 }
+      )
+    }
+
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Get user profile
+    const { data: profile } = await supabase
+      .from("users")
+      .select("stripe_account_id, full_name, email")
+      .eq("id", user.id)
+      .single()
+
+    let accountId = profile?.stripe_account_id
+
+    // Create Stripe Connect account if not exists
+    if (!accountId) {
+      const account = await stripe.accounts.create({
+        type: "express",
+        country: "NL", // Default to Netherlands
+        email: profile?.email || user.email,
+        capabilities: {
+          transfers: { requested: true },
+        },
+        business_type: "individual",
+        business_profile: {
+          name: profile?.full_name || undefined,
+          product_description: "Creative studio rentals and equipment",
+        },
+      })
+
+      accountId = account.id
+
+      // Save account ID to user profile
+      await supabase
+        .from("users")
+        .update({ stripe_account_id: accountId })
+        .eq("id", user.id)
+    }
+
+    // Create onboarding link
+    const { searchParams } = new URL(request.url)
+    const returnUrl = searchParams.get("returnUrl") || `${process.env.NEXT_PUBLIC_APP_URL}/host/payouts`
+    const refreshUrl = searchParams.get("refreshUrl") || `${process.env.NEXT_PUBLIC_APP_URL}/host/payouts?refresh=true`
+
+    const accountLink = await stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: refreshUrl,
+      return_url: returnUrl,
+      type: "account_onboarding",
+    })
+
+    return NextResponse.json({
+      url: accountLink.url,
+      accountId,
+    })
+  } catch (error: any) {
+    console.error("Error creating Stripe Connect account:", error)
+    return NextResponse.json(
+      { error: error.message || "Failed to create Stripe Connect account" },
+      { status: 500 }
+    )
+  }
+}
+
+// GET /api/stripe/connect - Get Stripe account status
+export async function GET(request: Request) {
+  try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: "Stripe is not configured" },
+        { status: 500 }
+      )
+    }
+
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { data: profile } = await supabase
+      .from("users")
+      .select("stripe_account_id")
+      .eq("id", user.id)
+      .single()
+
+    if (!profile?.stripe_account_id) {
+      return NextResponse.json({
+        connected: false,
+        accountId: null,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+      })
+    }
+
+    const account = await stripe.accounts.retrieve(profile.stripe_account_id)
+
+    return NextResponse.json({
+      connected: true,
+      accountId: account.id,
+      chargesEnabled: account.charges_enabled,
+      payoutsEnabled: account.payouts_enabled,
+      detailsSubmitted: account.details_submitted,
+      defaultCurrency: account.default_currency,
+    })
+  } catch (error: any) {
+    console.error("Error getting Stripe account status:", error)
+    return NextResponse.json(
+      { error: error.message || "Failed to get Stripe account status" },
+      { status: 500 }
+    )
+  }
+}

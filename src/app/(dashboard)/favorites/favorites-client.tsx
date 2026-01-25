@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 interface Studio {
   id: string
@@ -26,22 +27,55 @@ type SortOption = "recent" | "price-low" | "price-high" | "name"
 type FilterType = "all" | "photo" | "film" | "podcast" | "music"
 
 export function FavoritesClient({ studios, totalCount, isEmpty }: FavoritesClientProps) {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<SortOption>("recent")
   const [filterType, setFilterType] = useState<FilterType>("all")
   const [favorites, setFavorites] = useState<string[]>(studios.map(s => s.id))
   const [displayCount, setDisplayCount] = useState(8)
+  const [isRemoving, setIsRemoving] = useState<string | null>(null)
 
   const getStudioImage = (studio: Studio) => {
     return studio.images?.[0] || studio.studio_images?.[0]?.url || ""
   }
 
-  const toggleFavorite = (studioId: string) => {
+  const toggleFavorite = async (studioId: string) => {
+    const isFavorited = favorites.includes(studioId)
+
+    // Optimistic update
     setFavorites(prev =>
       prev.includes(studioId)
         ? prev.filter(id => id !== studioId)
         : [...prev, studioId]
     )
+
+    try {
+      if (isFavorited) {
+        setIsRemoving(studioId)
+        const response = await fetch(`/api/favorites?studioId=${studioId}`, {
+          method: "DELETE",
+        })
+        if (!response.ok) throw new Error("Failed to remove")
+        router.refresh()
+      } else {
+        const response = await fetch("/api/favorites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studio_id: studioId }),
+        })
+        if (!response.ok) throw new Error("Failed to add")
+      }
+    } catch (err) {
+      // Revert on error
+      setFavorites(prev =>
+        isFavorited
+          ? [...prev, studioId]
+          : prev.filter(id => id !== studioId)
+      )
+      console.error("Failed to toggle favorite:", err)
+    } finally {
+      setIsRemoving(null)
+    }
   }
 
   // Filter and sort studios
