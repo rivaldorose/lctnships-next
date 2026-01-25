@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
     // Check cache first (only for non-date queries)
     if (cacheKey) {
-      const cached = getFromCache<{ studios: unknown[]; pagination: unknown }>(cacheKey)
+      const cached = await getFromCache<{ studios: unknown[]; pagination: unknown }>(cacheKey)
       if (cached) {
         return NextResponse.json(cached, {
           headers: { "X-Cache": "HIT" },
@@ -163,8 +163,8 @@ export async function GET(request: Request) {
 
     // Cache the result (30 seconds for search queries, 60 for browsing)
     if (cacheKey) {
-      const ttl = search ? cacheTTL.short : cacheTTL.standard
-      setInCache(cacheKey, result, ttl)
+      const ttl = search ? cacheTTL.SHORT : cacheTTL.STANDARD
+      await setInCache(cacheKey, result, ttl)
     }
 
     return NextResponse.json(result, {
@@ -251,7 +251,7 @@ export async function POST(request: Request) {
     if (error) throw error
 
     // Invalidate cache when new studio is created
-    invalidateCache("studios:")
+    await invalidateCache("studios:")
 
     return NextResponse.json({ studio }, { status: 201 })
   } catch (error: unknown) {

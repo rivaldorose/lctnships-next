@@ -1,34 +1,45 @@
 /**
- * Simple in-memory cache for API responses
- * For production with multiple instances, use Redis
+ * Hybrid cache layer - uses Redis when available, falls back to in-memory
  */
 
+import { getCache, setCache, deleteCache, invalidateCachePattern, isRedisAvailable, CACHE_TTL } from "./redis"
+
+// In-memory fallback cache
 interface CacheEntry<T> {
   data: T
   expiresAt: number
 }
 
-const cache = new Map<string, CacheEntry<unknown>>()
+const memoryCache = new Map<string, CacheEntry<unknown>>()
 
 // Clean up expired entries every minute
-setInterval(() => {
-  const now = Date.now()
-  for (const [key, entry] of cache.entries()) {
-    if (now > entry.expiresAt) {
-      cache.delete(key)
+if (typeof setInterval !== "undefined") {
+  setInterval(() => {
+    const now = Date.now()
+    for (const [key, entry] of memoryCache.entries()) {
+      if (now > entry.expiresAt) {
+        memoryCache.delete(key)
+      }
     }
-  }
-}, 60 * 1000)
+  }, 60 * 1000)
+}
 
 /**
- * Get a value from cache
+ * Get a value from cache (Redis or memory)
  */
-export function getFromCache<T>(key: string): T | null {
-  const entry = cache.get(key)
+export async function getFromCache<T>(key: string): Promise<T | null> {
+  // Try Redis first
+  if (isRedisAvailable()) {
+    const data = await getCache<T>(key)
+    if (data !== null) return data
+  }
+
+  // Fall back to memory cache
+  const entry = memoryCache.get(key)
   if (!entry) return null
 
   if (Date.now() > entry.expiresAt) {
-    cache.delete(key)
+    memoryCache.delete(key)
     return null
   }
 
@@ -36,13 +47,19 @@ export function getFromCache<T>(key: string): T | null {
 }
 
 /**
- * Set a value in cache
+ * Set a value in cache (Redis and memory)
  * @param key - Cache key
  * @param data - Data to cache
  * @param ttlSeconds - Time to live in seconds (default: 60)
  */
-export function setInCache<T>(key: string, data: T, ttlSeconds = 60): void {
-  cache.set(key, {
+export async function setInCache<T>(key: string, data: T, ttlSeconds = 60): Promise<void> {
+  // Set in Redis if available
+  if (isRedisAvailable()) {
+    await setCache(key, data, ttlSeconds)
+  }
+
+  // Always set in memory cache as well (for faster reads)
+  memoryCache.set(key, {
     data,
     expiresAt: Date.now() + ttlSeconds * 1000,
   })
@@ -50,21 +67,39 @@ export function setInCache<T>(key: string, data: T, ttlSeconds = 60): void {
 
 /**
  * Invalidate cache entries matching a pattern
- * @param pattern - String pattern to match (uses startsWith)
+ * @param pattern - String pattern to match (uses startsWith for memory, glob for Redis)
  */
-export function invalidateCache(pattern: string): void {
-  for (const key of cache.keys()) {
+export async function invalidateCache(pattern: string): Promise<void> {
+  // Invalidate in Redis
+  if (isRedisAvailable()) {
+    await invalidateCachePattern(`${pattern}*`)
+  }
+
+  // Invalidate in memory
+  for (const key of memoryCache.keys()) {
     if (key.startsWith(pattern)) {
-      cache.delete(key)
+      memoryCache.delete(key)
     }
   }
+}
+
+/**
+ * Delete a specific cache entry
+ */
+export async function removeFromCache(key: string): Promise<void> {
+  if (isRedisAvailable()) {
+    await deleteCache(key)
+  }
+  memoryCache.delete(key)
 }
 
 /**
  * Clear all cache entries
  */
 export function clearCache(): void {
-  cache.clear()
+  memoryCache.clear()
+  // Note: Redis clear would require FLUSHDB which is dangerous
+  // Only clear memory cache here
 }
 
 /**
@@ -80,16 +115,5 @@ export function createCacheKey(prefix: string, params: Record<string, string | u
   return `${prefix}:${sortedParams || "default"}`
 }
 
-// Cache TTL presets (in seconds)
-export const cacheTTL = {
-  // Very short - for frequently changing data
-  short: 30,
-  // Standard - for semi-static data
-  standard: 60,
-  // Medium - for slower changing data
-  medium: 300,
-  // Long - for mostly static data
-  long: 900,
-  // Very long - for static data
-  static: 3600,
-}
+// Re-export TTL presets
+export const cacheTTL = CACHE_TTL

@@ -1,16 +1,15 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-// Simple in-memory rate limit store (works per instance)
-// For multi-instance production, use Redis
+// In-memory rate limit fallback (used when Redis is not available)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
 
-// Rate limit configuration per route type
 const rateLimits = {
-  auth: { limit: 10, windowMs: 60000 },      // 10 requests per minute for auth
-  api: { limit: 100, windowMs: 60000 },      // 100 requests per minute for general API
-  upload: { limit: 10, windowMs: 60000 },    // 10 uploads per minute
-  stripe: { limit: 20, windowMs: 60000 },    // 20 payment requests per minute
+  auth: { limit: 10, windowMs: 60000 },
+  api: { limit: 100, windowMs: 60000 },
+  upload: { limit: 10, windowMs: 60000 },
+  stripe: { limit: 20, windowMs: 60000 },
+  search: { limit: 200, windowMs: 60000 },
 }
 
 function getClientIP(request: NextRequest): string {
@@ -25,10 +24,11 @@ function getRateLimitConfig(pathname: string) {
   if (pathname.startsWith('/api/auth')) return rateLimits.auth
   if (pathname.startsWith('/api/upload')) return rateLimits.upload
   if (pathname.startsWith('/api/stripe')) return rateLimits.stripe
+  if (pathname === '/api/studios') return rateLimits.search
   return rateLimits.api
 }
 
-function checkRateLimit(key: string, config: { limit: number; windowMs: number }): {
+function checkMemoryRateLimit(key: string, config: { limit: number; windowMs: number }): {
   allowed: boolean
   remaining: number
   reset: number
@@ -36,7 +36,6 @@ function checkRateLimit(key: string, config: { limit: number; windowMs: number }
   const now = Date.now()
   const entry = rateLimitStore.get(key)
 
-  // Clean entry if window expired
   if (entry && now > entry.resetTime) {
     rateLimitStore.delete(key)
   }
@@ -78,9 +77,29 @@ export async function middleware(request: NextRequest) {
     const config = getRateLimitConfig(pathname)
     const key = `${clientIP}:${pathname.split('/').slice(0, 3).join('/')}`
 
-    const { allowed, remaining, reset } = checkRateLimit(key, config)
+    // Try Redis rate limiting first, fall back to memory
+    let rateLimitResult: { allowed: boolean; remaining: number; reset: number }
 
-    if (!allowed) {
+    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+      try {
+        // Dynamic import to avoid issues during build
+        const { checkRateLimit, getRateLimitType } = await import('@/lib/rate-limit-redis')
+        const type = getRateLimitType(pathname)
+        const result = await checkRateLimit(clientIP, type)
+        rateLimitResult = {
+          allowed: result.success,
+          remaining: result.remaining,
+          reset: result.reset,
+        }
+      } catch {
+        // Fall back to memory rate limiting
+        rateLimitResult = checkMemoryRateLimit(key, config)
+      }
+    } else {
+      rateLimitResult = checkMemoryRateLimit(key, config)
+    }
+
+    if (!rateLimitResult.allowed) {
       return new NextResponse(
         JSON.stringify({ error: 'Too many requests. Please try again later.' }),
         {
@@ -89,8 +108,8 @@ export async function middleware(request: NextRequest) {
             'Content-Type': 'application/json',
             'X-RateLimit-Limit': config.limit.toString(),
             'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': Math.ceil(reset / 1000).toString(),
-            'Retry-After': Math.ceil((reset - Date.now()) / 1000).toString(),
+            'X-RateLimit-Reset': Math.ceil(rateLimitResult.reset / 1000).toString(),
+            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
           },
         }
       )
@@ -100,8 +119,22 @@ export async function middleware(request: NextRequest) {
     const response = await updateSession(request)
 
     response.headers.set('X-RateLimit-Limit', config.limit.toString())
-    response.headers.set('X-RateLimit-Remaining', remaining.toString())
-    response.headers.set('X-RateLimit-Reset', Math.ceil(reset / 1000).toString())
+    response.headers.set('X-RateLimit-Remaining', rateLimitResult.remaining.toString())
+    response.headers.set('X-RateLimit-Reset', Math.ceil(rateLimitResult.reset / 1000).toString())
+
+    // Add cache control headers for GET requests
+    if (request.method === 'GET') {
+      // Public caching for studio listings
+      if (pathname === '/api/studios') {
+        response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+      }
+      // Private caching for user-specific data
+      else if (pathname.startsWith('/api/bookings') ||
+               pathname.startsWith('/api/favorites') ||
+               pathname.startsWith('/api/notifications')) {
+        response.headers.set('Cache-Control', 'private, max-age=30, stale-while-revalidate=60')
+      }
+    }
 
     return response
   }
@@ -112,12 +145,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
