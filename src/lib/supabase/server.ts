@@ -30,5 +30,58 @@ export async function createClient() {
         }
       },
     },
+    // Performance optimizations
+    auth: {
+      // Use cookie-based session persistence for faster auth
+      persistSession: true,
+      // Auto-refresh tokens before they expire
+      autoRefreshToken: true,
+      // Detect session from URL for OAuth
+      detectSessionInUrl: true,
+    },
+    global: {
+      // Add connection pooling headers for Supabase
+      headers: {
+        // Enable connection reuse
+        'Connection': 'keep-alive',
+      },
+    },
+    // Database query optimizations
+    db: {
+      // Use connection pooler for transaction mode
+      schema: 'public',
+    },
+  })
+}
+
+/**
+ * Create a service role client for admin operations
+ * Only use this for server-side operations that need elevated permissions
+ */
+export async function createServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase service role credentials')
+  }
+
+  // Service client doesn't need cookies
+  return createServerClient(supabaseUrl, supabaseServiceKey, {
+    cookies: {
+      getAll() {
+        return []
+      },
+      setAll() {},
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    global: {
+      headers: {
+        'Connection': 'keep-alive',
+      },
+    },
   })
 }

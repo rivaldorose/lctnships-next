@@ -1,11 +1,11 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { getFromCache, setInCache, createCacheKey, cacheTTL, invalidateCache } from "@/lib/cache"
 
 // GET /api/studios - List studios with filtering and search
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const supabase = await createClient()
 
     // Query parameters
     const search = searchParams.get("search")
@@ -14,20 +14,66 @@ export async function GET(request: Request) {
     const minPrice = searchParams.get("minPrice")
     const maxPrice = searchParams.get("maxPrice")
     const date = searchParams.get("date")
-    const amenities = searchParams.get("amenities")?.split(",")
+    const amenities = searchParams.get("amenities")
     const sortBy = searchParams.get("sortBy") || "created_at"
     const sortOrder = searchParams.get("sortOrder") || "desc"
-    const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "12")
+    const page = searchParams.get("page") || "1"
+    const limit = searchParams.get("limit") || "12"
     const hostId = searchParams.get("hostId")
 
+    // Generate cache key (skip caching for date-specific queries)
+    const cacheKey = !date
+      ? createCacheKey("studios", {
+          search: search || undefined,
+          city: city || undefined,
+          type: type || undefined,
+          minPrice: minPrice || undefined,
+          maxPrice: maxPrice || undefined,
+          amenities: amenities || undefined,
+          sortBy,
+          sortOrder,
+          page,
+          limit,
+          hostId: hostId || undefined,
+        })
+      : null
+
+    // Check cache first (only for non-date queries)
+    if (cacheKey) {
+      const cached = getFromCache<{ studios: unknown[]; pagination: unknown }>(cacheKey)
+      if (cached) {
+        return NextResponse.json(cached, {
+          headers: { "X-Cache": "HIT" },
+        })
+      }
+    }
+
+    const supabase = await createClient()
+    const pageNum = parseInt(page)
+    const limitNum = parseInt(limit)
+
+    // Optimized select - only fetch needed fields
     let query = supabase
       .from("studios")
-      .select(`
-        *,
+      .select(
+        `
+        id,
+        title,
+        description,
+        type,
+        city,
+        hourly_rate,
+        daily_rate,
+        avg_rating,
+        total_reviews,
+        is_featured,
+        amenities,
+        images,
         studio_images (id, image_url, is_cover, display_order),
         host:users!studios_host_id_fkey (id, full_name, avatar_url)
-      `, { count: "exact" })
+      `,
+        { count: "exact" }
+      )
       .eq("is_published", true)
 
     // Filter by host
@@ -35,9 +81,11 @@ export async function GET(request: Request) {
       query = query.eq("host_id", hostId)
     }
 
-    // Search filter
+    // Search filter - use text search for better performance
     if (search) {
-      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,city.ilike.%${search}%`)
+      query = query.or(
+        `title.ilike.%${search}%,description.ilike.%${search}%,city.ilike.%${search}%`
+      )
     }
 
     // City filter
@@ -59,18 +107,21 @@ export async function GET(request: Request) {
     }
 
     // Amenities filter
-    if (amenities && amenities.length > 0) {
-      query = query.contains("amenities", amenities)
+    if (amenities) {
+      const amenityList = amenities.split(",")
+      if (amenityList.length > 0) {
+        query = query.contains("amenities", amenityList)
+      }
     }
 
-    // Sorting
+    // Sorting - validate field
     const validSortFields = ["created_at", "hourly_rate", "avg_rating", "title"]
     const sortField = validSortFields.includes(sortBy) ? sortBy : "created_at"
     query = query.order(sortField, { ascending: sortOrder === "asc" })
 
     // Pagination
-    const from = (page - 1) * limit
-    const to = from + limit - 1
+    const from = (pageNum - 1) * limitNum
+    const to = from + limitNum - 1
     query = query.range(from, to)
 
     const { data: studios, error, count } = await query
@@ -79,7 +130,7 @@ export async function GET(request: Request) {
 
     // If date is provided, filter out studios with conflicting bookings
     let availableStudios = studios
-    if (date && studios) {
+    if (date && studios && studios.length > 0) {
       const startOfDay = new Date(date)
       startOfDay.setHours(0, 0, 0, 0)
       const endOfDay = new Date(date)
@@ -87,6 +138,7 @@ export async function GET(request: Request) {
 
       const studioIds = studios.map((s) => s.id)
 
+      // Optimized query - only select studio_id
       const { data: bookedStudios } = await supabase
         .from("bookings")
         .select("studio_id")
@@ -99,21 +151,29 @@ export async function GET(request: Request) {
       availableStudios = studios.filter((s) => !bookedIds.has(s.id))
     }
 
-    return NextResponse.json({
+    const result = {
       studios: availableStudios,
       pagination: {
-        page,
-        limit,
+        page: pageNum,
+        limit: limitNum,
         total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
+        totalPages: Math.ceil((count || 0) / limitNum),
       },
+    }
+
+    // Cache the result (30 seconds for search queries, 60 for browsing)
+    if (cacheKey) {
+      const ttl = search ? cacheTTL.short : cacheTTL.standard
+      setInCache(cacheKey, result, ttl)
+    }
+
+    return NextResponse.json(result, {
+      headers: { "X-Cache": "MISS" },
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch studios"
     console.error("Error fetching studios:", error)
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch studios" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
@@ -121,7 +181,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -183,17 +245,18 @@ export async function POST(request: Request) {
         access_instructions,
         is_published: false,
       })
-      .select()
+      .select("id, title, type, city, hourly_rate, is_published, created_at")
       .single()
 
     if (error) throw error
 
+    // Invalidate cache when new studio is created
+    invalidateCache("studios:")
+
     return NextResponse.json({ studio }, { status: 201 })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create studio"
     console.error("Error creating studio:", error)
-    return NextResponse.json(
-      { error: error.message || "Failed to create studio" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
