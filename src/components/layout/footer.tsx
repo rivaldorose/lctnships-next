@@ -28,7 +28,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/studios?city=amsterdam" className="hover:text-black transition-colors">
+                <Link href="/cities" className="hover:text-black transition-colors">
                   Cities
                 </Link>
               </li>
