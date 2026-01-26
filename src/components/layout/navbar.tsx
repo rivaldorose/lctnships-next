@@ -49,12 +49,6 @@ export function Navbar() {
           >
             Inspiration
           </Link>
-          <Link
-            href="/pricing"
-            className="text-sm font-semibold text-gray-600 hover:text-black transition-colors"
-          >
-            Pricing
-          </Link>
         </nav>
 
         {/* Right side */}
@@ -154,9 +148,6 @@ export function Navbar() {
                 </Link>
                 <Link href="/inspiration" className="text-lg font-semibold">
                   Inspiration
-                </Link>
-                <Link href="/pricing" className="text-lg font-semibold">
-                  Pricing
                 </Link>
                 {!user && (
                   <Link href="/host/onboarding" className="text-lg font-semibold">
