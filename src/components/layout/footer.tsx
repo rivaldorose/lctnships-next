@@ -33,7 +33,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/studios" className="hover:text-black transition-colors">
+                <Link href="/studio-types" className="hover:text-black transition-colors">
                   Studio Types
                 </Link>
               </li>
