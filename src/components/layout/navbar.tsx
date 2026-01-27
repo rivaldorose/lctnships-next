@@ -44,10 +44,10 @@ export function Navbar() {
             Find a Studio
           </Link>
           <Link
-            href="/inspiration"
+            href="/blog"
             className="text-sm font-semibold text-gray-600 hover:text-black transition-colors"
           >
-            Inspiration
+            Editorial
           </Link>
           <Link
             href="/pricing"
@@ -152,8 +152,8 @@ export function Navbar() {
                 <Link href="/studios" className="text-lg font-semibold">
                   Find a Studio
                 </Link>
-                <Link href="/inspiration" className="text-lg font-semibold">
-                  Inspiration
+                <Link href="/blog" className="text-lg font-semibold">
+                  Editorial
                 </Link>
                 <Link href="/pricing" className="text-lg font-semibold">
                   Pricing
