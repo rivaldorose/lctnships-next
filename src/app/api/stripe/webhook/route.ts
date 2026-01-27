@@ -1,85 +1,67 @@
-import { headers } from "next/headers"
-import { NextResponse } from "next/server"
-import { stripe } from "@/lib/stripe/config"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { NextRequest, NextResponse } from "next/server"
+import { stripe } from "@/lib/stripe"
 import Stripe from "stripe"
 
-export async function POST(req: Request) {
-  if (!stripe) {
-    return NextResponse.json({ error: "Stripe not configured" }, { status: 500 })
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+export async function POST(request: NextRequest) {
+  if (!webhookSecret) {
+    console.error("STRIPE_WEBHOOK_SECRET is not set")
+    return NextResponse.json(
+      { error: "Webhook secret not configured" },
+      { status: 500 }
+    )
   }
 
-  const body = await req.text()
-  const headersList = await headers()
-  const signature = headersList.get("stripe-signature")!
+  const body = await request.text()
+  const signature = request.headers.get("stripe-signature")
+
+  if (!signature) {
+    return NextResponse.json(
+      { error: "No signature provided" },
+      { status: 400 }
+    )
+  }
 
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err)
+    return NextResponse.json(
+      { error: "Invalid signature" },
+      { status: 400 }
     )
-  } catch (err: any) {
-    console.error("Webhook signature verification failed:", err.message)
-    return NextResponse.json({ error: "Webhook Error" }, { status: 400 })
   }
 
-  const supabase = createAdminClient()
-
+  // Handle the event
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session
-      const bookingId = session.metadata?.booking_id
 
-      if (bookingId) {
-        // Update booking status
-        await supabase
-          .from("bookings")
-          .update({
-            payment_status: "paid",
-            status: "confirmed",
-            stripe_payment_id: session.payment_intent as string,
-          })
-          .eq("id", bookingId)
+      // Extract booking details from metadata
+      const { studioId, hours, date, startTime } = session.metadata || {}
 
-        // Create notification for host
-        const { data: booking } = await supabase
-          .from("bookings")
-          .select("host_id, renter_id, booking_number")
-          .eq("id", bookingId)
-          .single()
+      console.log("Payment successful:", {
+        sessionId: session.id,
+        studioId,
+        hours,
+        date,
+        startTime,
+        customerEmail: session.customer_details?.email,
+        amountTotal: session.amount_total,
+      })
 
-        if (booking) {
-          await supabase.from("notifications").insert({
-            user_id: booking.host_id,
-            type: "booking_confirmed",
-            title: "Nieuwe boeking!",
-            message: `Boeking #${booking.booking_number} is bevestigd`,
-            link: `/host/bookings`,
-          })
-        }
-      }
+      // TODO: Create booking in database
+      // TODO: Send confirmation email
+
       break
     }
 
-    case "account.updated": {
-      const account = event.data.object as Stripe.Account
-
-      // Update user's Stripe account status
-      if (account.charges_enabled) {
-        await supabase
-          .from("users")
-          .update({ stripe_account_id: account.id })
-          .eq("stripe_account_id", account.id)
-      }
-      break
-    }
-
-    case "payment_intent.succeeded": {
-      const paymentIntent = event.data.object as Stripe.PaymentIntent
-      console.log("Payment succeeded:", paymentIntent.id)
+    case "checkout.session.expired": {
+      const session = event.data.object as Stripe.Checkout.Session
+      console.log("Checkout session expired:", session.id)
       break
     }
 
