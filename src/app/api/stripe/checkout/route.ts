@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const totalAmount = Math.round(pricePerHour * hours * 100) // Convert to cents
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card", "ideal"],
+      payment_method_types: ["card", "ideal", "sepa_debit", "bancontact"],
       line_items: [
         {
           price_data: {
