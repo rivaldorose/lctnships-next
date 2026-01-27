@@ -99,6 +99,9 @@ export function Navbar() {
                   <DropdownMenuItem asChild>
                     <Link href="/messages">Messages</Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/credits">Strippenkaart</Link>
+                  </DropdownMenuItem>
                   {isHost && (
                     <>
                       <DropdownMenuSeparator />
