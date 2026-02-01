@@ -57,14 +57,14 @@ export function SignupForm() {
     toast.success("Account created!", {
       description: "Check your email to verify your account.",
     })
-    router.push("/onboarding")
+    router.push("/dashboard")
   }
 
   const handleGoogleSignup = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback?redirect=/onboarding`,
+        redirectTo: `${window.location.origin}/api/auth/callback?redirect=/dashboard`,
       },
     })
 
@@ -79,7 +79,7 @@ export function SignupForm() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "apple",
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback?redirect=/onboarding`,
+        redirectTo: `${window.location.origin}/api/auth/callback?redirect=/dashboard`,
       },
     })
 
