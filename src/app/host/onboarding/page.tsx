@@ -25,7 +25,7 @@ const studioTypes = [
 
 export default function OnboardingBasicsPage() {
   const router = useRouter()
-  const [selectedType, setSelectedType] = useState<string | null>("photo")
+  const [selectedType, setSelectedType] = useState<string | null>(null)
   const [studioName, setStudioName] = useState("")
   const [address, setAddress] = useState<AddressData>(emptyAddress)
   const [description, setDescription] = useState("")
@@ -183,7 +183,7 @@ export default function OnboardingBasicsPage() {
           </Link>
           <button
             onClick={handleContinue}
-            disabled={!studioName || !isAddressValid}
+            disabled={!selectedType || !studioName || !isAddressValid}
             className="bg-primary hover:bg-primary/90 text-white px-10 py-4 rounded-full font-bold shadow-lg shadow-primary/25 transition-all flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Continue to Media
