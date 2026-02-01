@@ -44,10 +44,16 @@ export function Navbar() {
             Find a Studio
           </Link>
           <Link
+            href="/inspiration"
+            className="text-sm font-semibold text-gray-600 hover:text-black transition-colors"
+          >
+            Inspiration
+          </Link>
+          <Link
             href="/blog"
             className="text-sm font-semibold text-gray-600 hover:text-black transition-colors"
           >
-            Editorial
+            Blog
           </Link>
         </nav>
 
@@ -149,8 +155,11 @@ export function Navbar() {
                 <Link href="/studios" className="text-lg font-semibold">
                   Find a Studio
                 </Link>
+                <Link href="/inspiration" className="text-lg font-semibold">
+                  Inspiration
+                </Link>
                 <Link href="/blog" className="text-lg font-semibold">
-                  Editorial
+                  Blog
                 </Link>
                 {!user && (
                   <Link href="/host/onboarding" className="text-lg font-semibold">
