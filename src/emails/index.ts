@@ -8,3 +8,13 @@ export { default as BookingCancelledEmail } from "./booking-cancelled"
 export { default as ReviewRequestEmail } from "./review-request"
 export { default as NewMessageEmail } from "./new-message"
 export { default as PasswordResetEmail } from "./password-reset"
+
+// Host emails
+export { default as HostWelcomeEmail } from "./host-welcome"
+export { default as HostBookingRequestEmail } from "./host-booking-request"
+export { default as HostBookingConfirmedEmail } from "./host-booking-confirmed"
+export { default as HostCancellationEmail } from "./host-cancellation"
+export { default as HostSessionReminderEmail } from "./host-session-reminder"
+export { default as HostNewReviewEmail } from "./host-new-review"
+export { default as HostPayoutEmail } from "./host-payout"
+export { default as HostNewMessageEmail } from "./host-new-message"
