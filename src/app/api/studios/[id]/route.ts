@@ -10,6 +10,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
     const { data: studio, error } = await supabase
       .from("studios")
@@ -55,6 +56,35 @@ export async function GET(request: Request, { params }: RouteParams) {
       throw error
     }
 
+    // Check if user is authorized to see sensitive access info
+    let canSeeSensitiveInfo = false
+
+    if (user) {
+      // Host can always see their own studio's access info
+      if (studio.host_id === user.id) {
+        canSeeSensitiveInfo = true
+      } else {
+        // Check if user has an active/confirmed booking for this studio
+        const { data: activeBooking } = await supabase
+          .from("bookings")
+          .select("id")
+          .eq("studio_id", id)
+          .eq("renter_id", user.id)
+          .in("status", ["confirmed", "in_progress"])
+          .limit(1)
+          .single()
+
+        canSeeSensitiveInfo = !!activeBooking
+      }
+    }
+
+    // Remove sensitive fields if user is not authorized
+    if (!canSeeSensitiveInfo) {
+      delete studio.entry_code
+      delete studio.wifi_password
+      delete studio.access_instructions
+    }
+
     // Get availability for next 30 days
     const today = new Date()
     const thirtyDaysFromNow = new Date()
@@ -72,10 +102,10 @@ export async function GET(request: Request, { params }: RouteParams) {
       studio,
       bookedSlots: bookings || [],
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching studio:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to fetch studio" },
+      { error: "Failed to fetch studio" },
       { status: 500 }
     )
   }
@@ -156,10 +186,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (error) throw error
 
     return NextResponse.json({ studio })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating studio:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to update studio" },
+      { error: "Failed to update studio" },
       { status: 500 }
     )
   }
@@ -213,10 +243,10 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     if (error) throw error
 
     return NextResponse.json({ message: "Studio deleted successfully" })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting studio:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to delete studio" },
+      { error: "Failed to delete studio" },
       { status: 500 }
     )
   }
