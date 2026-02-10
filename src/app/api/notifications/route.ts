@@ -13,7 +13,9 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const unreadOnly = searchParams.get("unread_only") === "true"
-    const limit = parseInt(searchParams.get("limit") || "50")
+    const requestedLimit = parseInt(searchParams.get("limit") || "50")
+    // Validate and cap the limit to prevent DoS
+    const limit = Math.min(Math.max(1, isNaN(requestedLimit) ? 50 : requestedLimit), 100)
 
     let query = supabase
       .from("notifications")
@@ -41,10 +43,10 @@ export async function GET(request: Request) {
       notifications: data,
       unread_count: unreadCount || 0,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching notifications:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to fetch notifications" },
+      { error: "Failed to fetch notifications" },
       { status: 500 }
     )
   }
@@ -70,20 +72,27 @@ export async function PATCH(request: Request) {
         .update({ is_read: true })
         .eq("user_id", user.id)
         .eq("is_read", false)
-    } else if (notification_ids && notification_ids.length > 0) {
-      // Mark specific notifications as read
-      await supabase
-        .from("notifications")
-        .update({ is_read: true })
-        .eq("user_id", user.id)
-        .in("id", notification_ids)
+    } else if (notification_ids && Array.isArray(notification_ids) && notification_ids.length > 0) {
+      // Validate notification_ids are valid UUIDs and limit batch size
+      const validIds = notification_ids
+        .filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id))
+        .slice(0, 100) // Limit to 100 IDs per request
+
+      if (validIds.length > 0) {
+        // Mark specific notifications as read
+        await supabase
+          .from("notifications")
+          .update({ is_read: true })
+          .eq("user_id", user.id)
+          .in("id", validIds)
+      }
     }
 
     return NextResponse.json({ message: "Notifications marked as read" })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating notifications:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to update notifications" },
+      { error: "Failed to update notifications" },
       { status: 500 }
     )
   }
@@ -117,10 +126,10 @@ export async function DELETE(request: Request) {
     }
 
     return NextResponse.json({ message: "Notification(s) deleted" })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting notifications:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to delete notifications" },
+      { error: "Failed to delete notifications" },
       { status: 500 }
     )
   }

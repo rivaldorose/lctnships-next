@@ -33,10 +33,10 @@ export async function GET(request: Request) {
     if (error) throw error
 
     return NextResponse.json({ favorites })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching favorites:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to fetch favorites" },
+      { error: "Failed to fetch favorites" },
       { status: 500 }
     )
   }
@@ -62,37 +62,44 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if already favorited
-    const { data: existing } = await supabase
-      .from("favorites")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("studio_id", studio_id)
-      .single()
-
-    if (existing) {
+    // Validate studio_id is a valid UUID
+    if (!/^[0-9a-f-]{36}$/i.test(studio_id)) {
       return NextResponse.json(
-        { error: "Studio already in favorites" },
+        { error: "Invalid studio ID" },
         { status: 400 }
       )
     }
 
+    // Use upsert to handle race conditions atomically
+    // If the favorite already exists, this will return the existing row
     const { data: favorite, error } = await supabase
       .from("favorites")
-      .insert({
-        user_id: user.id,
-        studio_id,
-      })
+      .upsert(
+        { user_id: user.id, studio_id },
+        { onConflict: "user_id,studio_id", ignoreDuplicates: true }
+      )
       .select()
       .single()
+
+    // If upsert returns no data (duplicate was ignored), fetch the existing favorite
+    if (!favorite && !error) {
+      const { data: existingFavorite } = await supabase
+        .from("favorites")
+        .select()
+        .eq("user_id", user.id)
+        .eq("studio_id", studio_id)
+        .single()
+
+      return NextResponse.json({ favorite: existingFavorite }, { status: 200 })
+    }
 
     if (error) throw error
 
     return NextResponse.json({ favorite }, { status: 201 })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error adding to favorites:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to add to favorites" },
+      { error: "Failed to add to favorites" },
       { status: 500 }
     )
   }
@@ -118,6 +125,14 @@ export async function DELETE(request: Request) {
       )
     }
 
+    // Validate studioId is a valid UUID
+    if (!/^[0-9a-f-]{36}$/i.test(studioId)) {
+      return NextResponse.json(
+        { error: "Invalid studio ID" },
+        { status: 400 }
+      )
+    }
+
     const { error } = await supabase
       .from("favorites")
       .delete()
@@ -127,10 +142,10 @@ export async function DELETE(request: Request) {
     if (error) throw error
 
     return NextResponse.json({ message: "Removed from favorites" })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error removing from favorites:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to remove from favorites" },
+      { error: "Failed to remove from favorites" },
       { status: 500 }
     )
   }
