@@ -18,3 +18,7 @@ export { default as HostSessionReminderEmail } from "./host-session-reminder"
 export { default as HostNewReviewEmail } from "./host-new-review"
 export { default as HostPayoutEmail } from "./host-payout"
 export { default as HostNewMessageEmail } from "./host-new-message"
+
+// Marketing emails
+export { default as NewStudiosDiscoveryEmail } from "./new-studios-discovery"
+export { default as ReEngagementEmail } from "./re-engagement"

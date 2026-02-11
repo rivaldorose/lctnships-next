@@ -36,6 +36,15 @@ export async function POST(request: Request, { params }: RouteParams) {
       )
     }
 
+    // Verify payment has been made before allowing confirmation
+    // Only allow confirmation if payment is completed or if it's an instant book (pre-authorized)
+    if (booking.payment_status !== "paid" && booking.payment_status !== "authorized") {
+      return NextResponse.json(
+        { error: "Cannot confirm booking: payment not completed" },
+        { status: 400 }
+      )
+    }
+
     // Update booking status
     const { data: updatedBooking, error: updateError } = await supabase
       .from("bookings")
@@ -64,10 +73,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       message: "Booking confirmed successfully",
       booking: updatedBooking,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error confirming booking:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to confirm booking" },
+      { error: "Failed to confirm booking" },
       { status: 500 }
     )
   }

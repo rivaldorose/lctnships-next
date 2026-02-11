@@ -5,7 +5,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
 
 const rateLimits = {
-  auth: { limit: 10, windowMs: 60000 },
+  auth: { limit: 5, windowMs: 60000 },    // Stricter limit for auth to prevent brute force
   api: { limit: 100, windowMs: 60000 },
   upload: { limit: 10, windowMs: 60000 },
   stripe: { limit: 20, windowMs: 60000 },
@@ -13,11 +13,55 @@ const rateLimits = {
 }
 
 function getClientIP(request: NextRequest): string {
+  // For Vercel/trusted proxies, X-Forwarded-For is reliable
+  // For other deployments, consider configuring trusted proxies
   const forwarded = request.headers.get('x-forwarded-for')
-  const ip = forwarded?.split(',')[0]?.trim() ||
-             request.headers.get('x-real-ip') ||
-             'unknown'
-  return ip
+  const realIp = request.headers.get('x-real-ip')
+  const cfConnectingIp = request.headers.get('cf-connecting-ip') // Cloudflare
+
+  // Prefer Cloudflare's header if available (most reliable when using CF)
+  if (cfConnectingIp) {
+    return cfConnectingIp.trim()
+  }
+
+  // Use X-Forwarded-For (first IP is the original client)
+  if (forwarded) {
+    const firstIp = forwarded.split(',')[0]?.trim()
+    if (firstIp && isValidIP(firstIp)) {
+      return firstIp
+    }
+  }
+
+  // Fallback to X-Real-IP
+  if (realIp && isValidIP(realIp.trim())) {
+    return realIp.trim()
+  }
+
+  // If no valid IP found, use a hash of user-agent + accept-language as fingerprint
+  // This prevents attackers from bypassing rate limits by not sending IP headers
+  const userAgent = request.headers.get('user-agent') || ''
+  const acceptLang = request.headers.get('accept-language') || ''
+  return `fingerprint:${simpleHash(userAgent + acceptLang)}`
+}
+
+// Basic IP validation
+function isValidIP(ip: string): boolean {
+  // IPv4
+  const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/
+  // IPv6 (simplified)
+  const ipv6Regex = /^[a-fA-F0-9:]+$/
+  return ipv4Regex.test(ip) || ipv6Regex.test(ip)
+}
+
+// Simple hash function for fingerprinting
+function simpleHash(str: string): string {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(36)
 }
 
 function getRateLimitConfig(pathname: string) {

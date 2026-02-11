@@ -1,6 +1,15 @@
+import { createClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
+  // Require authentication to prevent API key abuse
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   const searchParams = request.nextUrl.searchParams
   const input = searchParams.get("input")
 
@@ -8,10 +17,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Input required" }, { status: 400 })
   }
 
+  // Limit input length to prevent abuse
+  if (input.length > 200) {
+    return NextResponse.json({ error: "Input too long" }, { status: 400 })
+  }
+
   const apiKey = process.env.GOOGLE_PLACES_API_KEY
 
   if (!apiKey) {
-    return NextResponse.json({ error: "API key not configured" }, { status: 500 })
+    return NextResponse.json({ error: "Service unavailable" }, { status: 503 })
   }
 
   try {

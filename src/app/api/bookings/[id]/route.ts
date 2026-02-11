@@ -42,10 +42,10 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     return NextResponse.json({ booking })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching booking:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to fetch booking" },
+      { error: "Failed to fetch booking" },
       { status: 500 }
     )
   }
@@ -76,11 +76,39 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 })
     }
 
-    // Update booking
+    // Determine user role and whitelist allowed fields
+    const isHost = existingBooking.host_id === user.id
+    const isRenter = existingBooking.renter_id === user.id
+
+    // Fields that hosts can update
+    const hostAllowedFields = ["status", "host_notes", "cancellation_reason"]
+    // Fields that renters can update
+    const renterAllowedFields = ["renter_notes", "special_requests"]
+    // Fields that neither can update (protected)
+    // payment_status, total_amount, stripe_payment_intent, host_id, renter_id, studio_id, etc.
+
+    const allowedFields = isHost ? hostAllowedFields : isRenter ? renterAllowedFields : []
+
+    // Filter body to only include allowed fields
+    const sanitizedUpdate: Record<string, unknown> = {}
+    for (const field of allowedFields) {
+      if (field in body) {
+        sanitizedUpdate[field] = body[field]
+      }
+    }
+
+    if (Object.keys(sanitizedUpdate).length === 0) {
+      return NextResponse.json(
+        { error: "No valid fields to update" },
+        { status: 400 }
+      )
+    }
+
+    // Update booking with sanitized data only
     const { data: booking, error } = await supabase
       .from("bookings")
       .update({
-        ...body,
+        ...sanitizedUpdate,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -90,10 +118,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (error) throw error
 
     return NextResponse.json({ booking })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating booking:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to update booking" },
+      { error: "Failed to update booking" },
       { status: 500 }
     )
   }
