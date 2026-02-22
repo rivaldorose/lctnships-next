@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { resend } from "@/lib/resend"
+import { getResend } from "@/lib/resend"
 import BookingConfirmedEmail from "@/emails/booking-confirmed"
 import { NextResponse } from "next/server"
 
@@ -94,7 +94,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       ? studio.images[0]
       : undefined
 
-    await resend.emails.send({
+    await getResend().emails.send({
       from: "lcntships <noreply@lcntships.com>",
       to: renter?.email,
       subject: `Your session at ${studio?.title} is confirmed!`,
