@@ -19,7 +19,7 @@ export function useUser() {
         .from("users")
         .select("*")
         .eq("id", userId)
-        .single()
+        .maybeSingle()
 
       if (error) {
         return null

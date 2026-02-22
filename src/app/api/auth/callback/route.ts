@@ -64,7 +64,7 @@ export async function GET(request: Request) {
         .from("users")
         .select("id")
         .eq("id", data.user.id)
-        .single()
+        .maybeSingle()
 
       if (!existingProfile) {
         // Sanitize user metadata before inserting
