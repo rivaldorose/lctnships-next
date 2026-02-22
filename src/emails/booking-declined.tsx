@@ -181,15 +181,17 @@ const pivotHeading = { fontSize: "18px", fontWeight: "700", color: "#0e181b", te
 
 const primaryButton = {
   backgroundColor: "#30bae8",
-  color: "#ffffff",
+  color: "#0e181b",
   fontSize: "16px",
   fontWeight: "700",
-  padding: "16px 40px",
-  borderRadius: "999px",
+  padding: "16px 32px",
+  borderRadius: "8px",
   textDecoration: "none",
-  display: "inline-block",
-  width: "100%",
+  display: "block",
+  width: "280px",
+  maxWidth: "100%",
   textAlign: "center" as const,
+  margin: "0 auto",
 }
 
 const ctaSubtext = { fontSize: "14px", color: "#94a3b8", margin: "12px 0 0", textAlign: "center" as const }
