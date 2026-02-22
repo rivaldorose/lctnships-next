@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
+import { resend } from "@/lib/resend"
+import BookingConfirmedEmail from "@/emails/booking-confirmed"
 import { NextResponse } from "next/server"
 
 interface RouteParams {
@@ -21,8 +23,9 @@ export async function POST(request: Request, { params }: RouteParams) {
       .from("bookings")
       .select(`
         *,
-        studio:studios(title),
-        renter:users!bookings_renter_id_fkey(full_name, email)
+        studio:studios(title, address, images),
+        renter:users!bookings_renter_id_fkey(full_name, email),
+        host:users!bookings_host_id_fkey(full_name, phone)
       `)
       .eq("id", id)
       .eq("host_id", user.id)
@@ -67,7 +70,43 @@ export async function POST(request: Request, { params }: RouteParams) {
       p_link: `/bookings/${id}`,
     })
 
-    // TODO: Send confirmation email to renter
+    // Send confirmation email to renter
+    const studio = booking.studio as any
+    const renter = booking.renter as any
+    const host = booking.host as any
+
+    const startDate = new Date(booking.start_time)
+    const endDate = new Date(booking.end_time)
+    const dateTimeStr = `${startDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })} • ${startDate.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    })} - ${endDate.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    })}`
+
+    const studioImage = Array.isArray(studio?.images) && studio.images.length > 0
+      ? studio.images[0]
+      : undefined
+
+    await resend.emails.send({
+      from: "lcntships <noreply@lcntships.com>",
+      to: renter?.email,
+      subject: `Your session at ${studio?.title} is confirmed!`,
+      react: BookingConfirmedEmail({
+        studioName: studio?.title,
+        studioImage,
+        dateTime: dateTimeStr,
+        location: studio?.address,
+        hostName: host?.full_name,
+        hostPhone: host?.phone,
+      }),
+    })
 
     return NextResponse.json({
       message: "Booking confirmed successfully",
