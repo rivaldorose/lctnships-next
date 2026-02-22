@@ -30,27 +30,6 @@ export async function createClient() {
         }
       },
     },
-    // Performance optimizations
-    auth: {
-      // Use cookie-based session persistence for faster auth
-      persistSession: true,
-      // Auto-refresh tokens before they expire
-      autoRefreshToken: true,
-      // Detect session from URL for OAuth
-      detectSessionInUrl: true,
-    },
-    global: {
-      // Add connection pooling headers for Supabase
-      headers: {
-        // Enable connection reuse
-        'Connection': 'keep-alive',
-      },
-    },
-    // Database query optimizations
-    db: {
-      // Use connection pooler for transaction mode
-      schema: 'public',
-    },
   })
 }
 

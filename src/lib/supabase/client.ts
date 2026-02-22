@@ -24,32 +24,7 @@ export function createClient() {
   }
 
   // Create and cache the browser client
-  browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
-    // Performance optimizations for browser
-    auth: {
-      // Persist session in localStorage for faster initial load
-      persistSession: true,
-      // Auto-refresh tokens before they expire
-      autoRefreshToken: true,
-      // Detect session from URL for OAuth redirects
-      detectSessionInUrl: true,
-      // Storage key for session
-      storageKey: 'lctnships-auth',
-    },
-    global: {
-      // Enable connection reuse
-      headers: {
-        'Connection': 'keep-alive',
-      },
-    },
-    // Realtime optimizations
-    realtime: {
-      params: {
-        // Increase heartbeat interval to reduce overhead
-        heartbeat_interval_ms: 30000,
-      },
-    },
-  })
+  browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey)
 
   return browserClient
 }
