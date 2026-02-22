@@ -37,8 +37,12 @@ export function SignupForm() {
     })
 
     if (error) {
-      toast.error("Sign up failed", {
-        description: error.message,
+      let description = error.message
+      if (error.message.includes("already registered")) {
+        description = "Dit e-mailadres is al in gebruik. Probeer in te loggen."
+      }
+      toast.error("Registratie mislukt", {
+        description,
       })
       setIsLoading(false)
       return
@@ -46,17 +50,23 @@ export function SignupForm() {
 
     // Create user profile
     if (data.user) {
-      await supabase.from("users").insert({
+      const { error: profileError } = await supabase.from("users").insert({
         id: data.user.id,
         email: data.user.email!,
         full_name: fullName,
         user_type: "renter",
       })
+
+      if (profileError) {
+        // Profile creation failed but auth account exists - not blocking
+        console.error("Failed to create profile:", profileError.message)
+      }
     }
 
-    toast.success("Account created!", {
-      description: "Check your email to verify your account.",
+    toast.success("Account aangemaakt!", {
+      description: "Controleer je e-mail om je account te bevestigen.",
     })
+    router.refresh()
     router.push("/dashboard")
   }
 

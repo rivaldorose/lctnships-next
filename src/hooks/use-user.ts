@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { User } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 import { Tables } from "@/types/database.types"
@@ -13,20 +13,42 @@ export function useUser() {
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
 
+  const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .single()
+
+      if (error) {
+        return null
+      }
+      return data
+    } catch {
+      return null
+    }
+  }, [supabase])
+
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser()
 
-      if (user) {
-        const { data: profile } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", user.id)
-          .single()
-        setProfile(profile)
+        if (error || !user) {
+          setUser(null)
+          setProfile(null)
+          setIsLoading(false)
+          return
+        }
+
+        setUser(user)
+        const profileData = await fetchProfile(user.id)
+        setProfile(profileData)
+      } catch {
+        setUser(null)
+        setProfile(null)
       }
-
       setIsLoading(false)
     }
 
@@ -34,15 +56,17 @@ export function useUser() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
+        // Skip INITIAL_SESSION - it may contain an expired access token that
+        // hasn't been refreshed yet. The getUser() call above handles initial
+        // load properly by validating and refreshing the token first.
+        if (event === 'INITIAL_SESSION') return
 
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", session.user.id)
-            .single()
-          setProfile(profile)
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
+
+        if (currentUser) {
+          const profileData = await fetchProfile(currentUser.id)
+          setProfile(profileData)
         } else {
           setProfile(null)
         }
@@ -52,10 +76,12 @@ export function useUser() {
     )
 
     return () => subscription.unsubscribe()
-  }, [supabase])
+  }, [supabase, fetchProfile])
 
   const signOut = async () => {
     await supabase.auth.signOut()
+    setUser(null)
+    setProfile(null)
     window.location.href = "/"
   }
 
