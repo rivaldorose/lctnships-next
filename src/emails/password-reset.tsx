@@ -35,9 +35,29 @@ export default function PasswordResetEmail({
 
           {/* Content */}
           <Section style={content}>
-            <div style={lockIcon}>
-              <Text style={{ margin: "0", fontSize: "32px" }}>🔒</Text>
-            </div>
+            <table
+              cellPadding="0"
+              cellSpacing="0"
+              border={0}
+              style={{ margin: "0 auto 24px" }}
+            >
+              <tr>
+                <td
+                  align="center"
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(48,186,232,0.1)",
+                    textAlign: "center",
+                    verticalAlign: "middle",
+                    fontSize: "32px",
+                  }}
+                >
+                  🔒
+                </td>
+              </tr>
+            </table>
 
             <Heading style={h1}>Reset your lcntships password</Heading>
 
@@ -54,11 +74,21 @@ export default function PasswordResetEmail({
             </Section>
 
             {/* Expiry Warning */}
-            <Section style={warningCard}>
-              <Text style={warningText}>
-                ⏰ For your security, this link will expire in 2 hours.
-              </Text>
-            </Section>
+            <table
+              cellPadding="0"
+              cellSpacing="0"
+              border={0}
+              width="100%"
+              style={{ maxWidth: "480px", margin: "32px auto 0" }}
+            >
+              <tr>
+                <td style={warningCardTd}>
+                  <Text style={warningText}>
+                    ⏰ For your security, this link will expire in 2 hours.
+                  </Text>
+                </td>
+              </tr>
+            </table>
           </Section>
 
           {/* Secondary Info */}
@@ -68,12 +98,22 @@ export default function PasswordResetEmail({
               email. Your account is still secure.
             </Text>
 
-            <Section style={{ textAlign: "center" as const, marginTop: "32px" }}>
-              <Text style={teamName}>The lcntships Team</Text>
-              <Text style={teamSubtext}>
-                Creative Studio Rentals & Management
-              </Text>
-            </Section>
+            <table
+              cellPadding="0"
+              cellSpacing="0"
+              border={0}
+              width="100%"
+              style={{ marginTop: "32px" }}
+            >
+              <tr>
+                <td align="center">
+                  <Text style={teamName}>The lcntships Team</Text>
+                  <Text style={teamSubtext}>
+                    Creative Studio Rentals & Management
+                  </Text>
+                </td>
+              </tr>
+            </table>
 
             <Text style={copyright}>
               © {new Date().getFullYear()} LCNTSHIPS STUDIO RENTALS. ALL RIGHTS
@@ -114,17 +154,6 @@ const content = {
   textAlign: "center" as const,
 }
 
-const lockIcon = {
-  width: "64px",
-  height: "64px",
-  borderRadius: "50%",
-  backgroundColor: "rgba(48,186,232,0.1)",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  marginBottom: "24px",
-}
-
 const h1 = {
   fontSize: "28px",
   fontWeight: "700",
@@ -157,15 +186,12 @@ const primaryButton = {
   margin: "0 auto",
 }
 
-const warningCard = {
-  marginTop: "32px",
+const warningCardTd = {
   padding: "16px 24px",
   backgroundColor: "#f6f7f8",
   borderRadius: "12px",
   border: "1px solid #e7f0f3",
-  maxWidth: "480px",
-  marginLeft: "auto",
-  marginRight: "auto",
+  textAlign: "center" as const,
 }
 
 const warningText = {
@@ -187,7 +213,7 @@ const secondaryText = {
   fontSize: "14px",
   color: "#4e8597",
   lineHeight: "1.6",
-  margin: "0 0 0",
+  margin: "0",
 }
 
 const teamName = { fontSize: "14px", fontWeight: "700", color: "#0e181b", margin: "0 0 4px" }

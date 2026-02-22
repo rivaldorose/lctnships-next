@@ -27,13 +27,13 @@ interface HostPayoutEmailProps {
 
 export default function HostPayoutEmail({
   hostName = "Jordan",
-  payoutAmount = "$1,284.00",
+  payoutAmount = "$1,360.00",
   periodStart = "October 1",
   periodEnd = "October 31",
   totalBookings = "8",
   grossEarnings = "$1,600.00",
-  serviceFee = "$316.00",
-  netPayout = "$1,284.00",
+  serviceFee = "$240.00",
+  netPayout = "$1,360.00",
   paymentMethod = "Bank account ending in 4242",
   estimatedArrival = "November 3, 2023",
   baseUrl = "https://lcntships.com",
@@ -83,7 +83,7 @@ export default function HostPayoutEmail({
                 <Text style={breakdownValue}>{grossEarnings}</Text>
               </Section>
               <Section style={breakdownRow}>
-                <Text style={breakdownLabel}>Service fee (20%)</Text>
+                <Text style={breakdownLabel}>Service fee (15%)</Text>
                 <Text style={breakdownValue}>-{serviceFee}</Text>
               </Section>
               <Section style={divider} />

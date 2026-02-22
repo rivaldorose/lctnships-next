@@ -26,14 +26,21 @@ export function LoginForm() {
     })
 
     if (error) {
-      toast.error("Login failed", {
-        description: error.message,
+      let description = error.message
+      if (error.message === "Invalid login credentials") {
+        description = "Het e-mailadres of wachtwoord is onjuist."
+      } else if (error.message === "Email not confirmed") {
+        description = "Bevestig je e-mailadres voordat je inlogt. Controleer je inbox."
+      }
+      toast.error("Inloggen mislukt", {
+        description,
       })
       setIsLoading(false)
       return
     }
 
-    toast.success("Welcome back!")
+    toast.success("Welkom terug!")
+    router.refresh()
     router.push(redirect)
   }
 

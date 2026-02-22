@@ -38,25 +38,23 @@ export default function ReviewRequestEmail({
             </Link>
           </Section>
 
-          {/* Hero Image with overlay text */}
-          <Section style={{ padding: "0" }}>
+          {/* Studio Image */}
+          <Section style={{ padding: "0 24px" }}>
             <Img
               src={studioImage}
-              width="600"
-              height="320"
+              width="552"
+              height="280"
               alt={studioName}
               style={heroImage}
             />
-            <Section style={heroOverlay}>
-              <Heading style={heroTitle}>
-                How was your shoot at {studioName}?
-              </Heading>
-              <Text style={heroSubtitle}>{sessionDate}</Text>
-            </Section>
           </Section>
 
-          {/* Body Text */}
-          <Section style={{ padding: "16px 32px 32px" }}>
+          {/* Content */}
+          <Section style={content}>
+            <Heading style={h1}>
+              How was your shoot at {studioName}?
+            </Heading>
+            <Text style={sessionDateText}>{sessionDate}</Text>
             <Text style={bodyText}>
               We hope your session was productive. Your feedback helps our
               creative community grow and ensures our studios maintain the
@@ -72,8 +70,7 @@ export default function ReviewRequestEmail({
           </Section>
 
           {/* Share CTA */}
-          <Section style={{ textAlign: "center" as const, padding: "0 32px 48px" }}>
-            <Section style={divider} />
+          <Section style={shareSection}>
             <Heading as="h3" style={shareHeading}>
               Show us what you created
             </Heading>
@@ -82,7 +79,7 @@ export default function ReviewRequestEmail({
               to the Inspiration Board to be featured in our monthly digest.
             </Text>
             <Button style={primaryButton} href={`${baseUrl}/inspiration`}>
-              Share your work
+              Share Your Work
             </Button>
           </Section>
 
@@ -99,6 +96,10 @@ export default function ReviewRequestEmail({
               {" • "}
               <Link href={`${baseUrl}/support`} style={footerLink}>Support Center</Link>
             </Text>
+            <Text style={copyright}>
+              © {new Date().getFullYear()} LCNTSHIPS STUDIO RENTALS. ALL RIGHTS
+              RESERVED.
+            </Text>
           </Section>
         </Container>
       </Body>
@@ -107,44 +108,71 @@ export default function ReviewRequestEmail({
 }
 
 const main = {
-  backgroundColor: "#111d21",
+  backgroundColor: "#f6f7f8",
   fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 }
 
 const container = {
-  maxWidth: "720px",
+  maxWidth: "600px",
   margin: "0 auto",
-  backgroundColor: "#1b2b30",
+  backgroundColor: "#ffffff",
   borderRadius: "12px",
   overflow: "hidden" as const,
+  border: "1px solid #e7f0f3",
 }
 
-const header = { padding: "20px 32px", borderBottom: "1px solid rgba(255,255,255,0.1)" }
-const logoLink = { textDecoration: "none", color: "#30bae8" }
-const logoText = { fontSize: "20px", fontWeight: "700", color: "#ffffff" }
+const header = {
+  padding: "32px",
+  borderBottom: "1px solid #e7f0f3",
+  textAlign: "center" as const,
+}
 
-const heroImage = { width: "100%", objectFit: "cover" as const, display: "block" }
+const logoLink = { textDecoration: "none", color: "#0e181b" }
+const logoText = { fontSize: "24px", fontWeight: "700" }
 
-const heroOverlay = { padding: "32px", marginTop: "-120px", position: "relative" as const }
-const heroTitle = { fontSize: "32px", fontWeight: "800", color: "#ffffff", margin: "0 0 8px", lineHeight: "1.2" }
-const heroSubtitle = { fontSize: "18px", color: "rgba(255,255,255,0.6)", margin: "0" }
+const heroImage = {
+  width: "100%",
+  borderRadius: "12px",
+  objectFit: "cover" as const,
+  display: "block",
+}
+
+const content = {
+  padding: "32px 32px 16px",
+  textAlign: "center" as const,
+}
+
+const h1 = {
+  fontSize: "28px",
+  fontWeight: "700",
+  color: "#0e181b",
+  margin: "0 0 8px",
+  lineHeight: "1.2",
+}
+
+const sessionDateText = {
+  fontSize: "14px",
+  color: "#4e8597",
+  margin: "0 0 24px",
+}
 
 const bodyText = {
-  fontSize: "18px",
-  color: "rgba(255,255,255,0.8)",
+  fontSize: "16px",
+  color: "#4e8597",
   lineHeight: "1.6",
-  textAlign: "center" as const,
-  fontWeight: "300",
   margin: "0",
+  maxWidth: "480px",
+  marginLeft: "auto",
+  marginRight: "auto",
 }
 
 const ratingSection = {
   textAlign: "center" as const,
-  padding: "32px",
-  margin: "0 32px 32px",
-  backgroundColor: "rgba(255,255,255,0.05)",
+  padding: "24px",
+  margin: "16px 32px 32px",
+  backgroundColor: "#f6f7f8",
   borderRadius: "12px",
-  border: "1px solid rgba(255,255,255,0.1)",
+  border: "1px solid #e7f0f3",
 }
 
 const ratingLabel = {
@@ -153,29 +181,71 @@ const ratingLabel = {
   color: "#30bae8",
   textTransform: "uppercase" as const,
   letterSpacing: "2px",
+  margin: "0 0 16px",
+}
+
+const ratingStars = {
+  fontSize: "36px",
+  color: "#30bae8",
+  margin: "0 0 12px",
+  letterSpacing: "12px",
+}
+
+const ratingHint = { fontSize: "12px", color: "#4e8597", margin: "0" }
+
+const shareSection = {
+  textAlign: "center" as const,
+  padding: "0 32px 40px",
+  borderTop: "1px solid #e7f0f3",
+  marginTop: "0",
+  paddingTop: "32px",
+}
+
+const shareHeading = {
+  fontSize: "20px",
+  fontWeight: "700",
+  color: "#0e181b",
+  margin: "0 0 12px",
+}
+
+const shareText = {
+  fontSize: "14px",
+  color: "#4e8597",
+  lineHeight: "1.6",
   margin: "0 0 24px",
 }
 
-const ratingStars = { fontSize: "48px", color: "rgba(255,255,255,0.2)", margin: "0 0 16px", letterSpacing: "16px" }
-const ratingHint = { fontSize: "12px", color: "rgba(255,255,255,0.4)", margin: "0" }
-
-const divider = { width: "48px", height: "1px", backgroundColor: "rgba(255,255,255,0.1)", margin: "0 auto 32px" }
-
-const shareHeading = { fontSize: "20px", fontWeight: "600", color: "#ffffff", margin: "0 0 16px" }
-const shareText = { fontSize: "16px", color: "rgba(255,255,255,0.6)", lineHeight: "1.6", margin: "0 0 32px" }
-
 const primaryButton = {
   backgroundColor: "#30bae8",
-  color: "#111d21",
+  color: "#0e181b",
   fontSize: "16px",
   fontWeight: "700",
-  padding: "16px 40px",
-  borderRadius: "999px",
+  padding: "16px 32px",
+  borderRadius: "8px",
   textDecoration: "none",
-  display: "inline-block",
+  display: "block",
+  width: "280px",
+  maxWidth: "100%",
+  textAlign: "center" as const,
+  margin: "0 auto",
 }
 
-const footer = { padding: "48px 32px", textAlign: "center" as const }
-const footerText = { fontSize: "14px", color: "rgba(255,255,255,0.3)", margin: "0 0 8px" }
-const footerLinks = { fontSize: "14px", margin: "0" }
-const footerLink = { color: "rgba(255,255,255,0.3)", textDecoration: "underline" }
+const footer = {
+  padding: "32px",
+  borderTop: "1px dashed #e7f0f3",
+  margin: "0 32px",
+  textAlign: "center" as const,
+}
+
+const footerText = { fontSize: "14px", color: "#4e8597", margin: "0 0 12px", lineHeight: "1.6" }
+const footerLinks = { fontSize: "12px", color: "#4e8597", margin: "0 0 16px" }
+const footerLink = { color: "#30bae8", textDecoration: "none" as const }
+
+const copyright = {
+  fontSize: "10px",
+  color: "#4e8597",
+  textTransform: "uppercase" as const,
+  letterSpacing: "2px",
+  opacity: 0.5,
+  marginTop: "16px",
+}
